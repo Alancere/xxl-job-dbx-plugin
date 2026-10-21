@@ -1,0 +1,226 @@
+{
+  "$schema": "https://raw.githubusercontent.com/t8y2/dbx/main/plugins/manifest.schema.json",
+  "manifest_version": 1,
+  "id": "dbx.xxljob",
+  "name": "XXL-JOB",
+  "icon": "assets/plugin.svg",
+  "version": "1.0.4",
+  "publisher": "dbx",
+  "description": "XXL-JOB distributed task scheduler console inside DBX: executor groups, job management, manual trigger, start/stop, scheduling logs, GLUE source, and trigger reports.",
+  "source": "https://github.com/t8y2/dbx",
+  "homepage": "https://github.com/t8y2/dbx/tree/main/plugins/xxl-job",
+  "engines": {
+    "dbx": ">=0.5.68",
+    "host_api": "^1.0"
+  },
+  "permissions": ["host.events", "host.workbench"],
+  "entrypoints": {
+    "backend": {
+      "executable": "bin/dbx-xxljob"
+    },
+    "ui": {
+      "root": "ui",
+      "entry": "ui/index.html"
+    }
+  },
+  "contributions": [
+    {
+      "type": "connection-provider",
+      "id": "dbx.xxljob.connection",
+      "label": "XXL-JOB admin",
+      "icon": "assets/connection.svg",
+      "database_type": "xxljob",
+      "description": "Connects to the XXL-JOB admin console (xxl-job-admin) with its own login form and cookie session.",
+      "fields": [
+        {
+          "key": "display_name",
+          "label": "Connection name",
+          "type": "text",
+          "default": "XXL-JOB",
+          "binding": "name",
+          "required": true
+        },
+        {
+          "key": "host",
+          "label": "Host",
+          "type": "text",
+          "default": "127.0.0.1",
+          "placeholder": "127.0.0.1, or paste the full console URL",
+          "binding": "host",
+          "required": true
+        },
+        {
+          "key": "port",
+          "label": "Port",
+          "type": "number",
+          "default": 8080,
+          "binding": "port",
+          "required": true
+        },
+        {
+          "key": "username",
+          "label": "Admin user",
+          "type": "text",
+          "default": "admin",
+          "binding": "username",
+          "required": true
+        },
+        {
+          "key": "password",
+          "label": "Admin password",
+          "type": "password",
+          "binding": "password",
+          "required": true,
+          "description": "Stored in the DBX secret store; the workbench never receives it."
+        },
+        {
+          "key": "access_token",
+          "label": "Access token (SSO / OpenAPI)",
+          "type": "password",
+          "binding": "secret",
+          "description": "Only for consoles that replaced the form login with XXL-SSO or guard the OpenAPI. Sent as the XXL-JOB-ACCESS-TOKEN header and exchanged at /api/login. Leave empty for a classic console."
+        },
+        {
+          "key": "session_cookie",
+          "label": "Browser session cookie",
+          "type": "password",
+          "binding": "secret",
+          "description": "Optional but decisive for consoles with a custom or SSO-only auth flow: paste the Cookie header of a logged-in browser session. The plugin then skips login and reuses it exactly, so it works whenever the browser works."
+        },
+        {
+          "key": "auth_header",
+          "label": "Custom auth header",
+          "type": "password",
+          "binding": "secret",
+          "description": "Optional. A full header such as \"Authorization: Bearer ey...\" or \"xxl-sso-token: ...\". A bare value is sent as a Bearer token."
+        },
+        {
+          "key": "scheme",
+          "label": "Protocol",
+          "type": "select",
+          "default": "http",
+          "binding": "config",
+          "options": [
+            { "label": "http", "value": "http" },
+            { "label": "https", "value": "https" }
+          ]
+        },
+        {
+          "key": "context_path",
+          "label": "Console context path",
+          "type": "text",
+          "default": "/xxl-job-admin",
+          "binding": "config",
+          "description": "Context path the console is deployed under. Use / when it is deployed at the root."
+        },
+        {
+          "key": "connect_timeout_secs",
+          "label": "Connect timeout (seconds)",
+          "type": "number",
+          "default": 15,
+          "binding": "config"
+        },
+        {
+          "key": "skip_tls_verify",
+          "label": "Skip TLS verification",
+          "type": "boolean",
+          "default": false,
+          "binding": "config",
+          "description": "Accept a self-signed certificate on an https console.",
+          "visible_when": { "field": "scheme", "one_of": ["https"] }
+        }
+      ],
+      "workbench": "dbx.xxljob.workbench",
+      "capabilities": ["test", "connect", "disconnect"],
+      "actions": [
+        {
+          "id": "detect-endpoint",
+          "label": "Detect console path",
+          "description": "Probes the usual XXL-JOB context paths on this host and fills in the one that answers.",
+          "variant": "outline",
+          "requires_valid_form": false,
+          "timeout_ms": 30000
+        },
+        {
+          "id": "inspect-endpoint",
+          "label": "Inspect console API",
+          "description": "Probes the classic xxl-job-admin endpoints and the REST layouts of restyled consoles, then reports what this server really answers. Useful when login returns 404.",
+          "variant": "outline",
+          "requires_valid_form": false,
+          "timeout_ms": 30000
+        }
+      ]
+    },
+    {
+      "type": "workbench",
+      "id": "dbx.xxljob.workbench",
+      "label": "XXL-JOB console",
+      "icon": "assets/plugin.svg",
+      "description": "Manage executor groups, jobs, triggers, scheduling logs, and GLUE source of one XXL-JOB instance.",
+      "ai": {
+        "recommendations": [
+          {
+            "id": "schedule-health",
+            "label": "Review scheduling health",
+            "prompt": "Review the XXL-JOB scheduling health of the open connection: which jobs are stopped, which recent executions failed, and what to fix first.",
+            "order": 10
+          }
+        ]
+      }
+    },
+    {
+      "type": "mcp",
+      "id": "dbx.xxljob.mcp",
+      "description": "Read executor groups, job definitions, and scheduling logs, and trigger a job run, through the open XXL-JOB connection."
+    }
+  ],
+  "localizations": {
+    "zh-CN": {
+      "name": "XXL-JOB",
+      "description": "在 DBX 内管理 XXL-JOB 分布式任务调度：执行器分组、任务管理、手动触发、启停、调度日志、GLUE 源码与运行报表。",
+      "contributions": {
+        "dbx.xxljob.connection": {
+          "label": "XXL-JOB 管理端",
+          "description": "通过管理端自带的登录表单和 Cookie 会话连接 xxl-job-admin。",
+          "fields": {
+            "display_name": { "label": "连接名称" },
+            "host": { "label": "主机", "placeholder": "127.0.0.1，也可直接粘贴完整管理端地址" },
+            "port": { "label": "端口" },
+            "username": { "label": "管理端账号" },
+            "password": { "label": "管理端密码", "description": "保存在 DBX 密钥库中，工作台不会拿到密码。" },
+            "access_token": {
+              "label": "Access Token（SSO / OpenAPI）",
+              "description": "仅当管理端用 XXL-SSO 取代了表单登录、或对 OpenAPI 做了 token 校验时填写。插件会把它作为 XXL-JOB-ACCESS-TOKEN 请求头发送，并用于 /api/login 换取会话；经典管理端留空即可。"
+            },
+            "session_cookie": {
+              "label": "浏览器会话 Cookie",
+              "description": "可选项，但对自定义/SSO 登录方式最有效：把已登录浏览器里请求头的 Cookie 值粘进来，插件会跳过登录直接复用，浏览器能连上它就能连上。"
+            },
+            "auth_header": {
+              "label": "自定义认证请求头",
+              "description": "可选项。可以是完整的 “Authorization: Bearer xxx” 或 “xxl-sso-token: xxx”；只填值时会按 Bearer token 发送。"
+            },
+            "scheme": { "label": "协议" },
+            "context_path": { "label": "管理端上下文路径", "description": "管理端部署的上下文路径；部署在根路径时填写 /。" },
+            "connect_timeout_secs": { "label": "连接超时（秒）" },
+            "skip_tls_verify": { "label": "跳过 TLS 校验", "description": "https 管理端使用自签名证书时勾选。" }
+          },
+          "actions": {
+            "detect-endpoint": {
+              "label": "自动探测管理端路径",
+              "description": "依次探测常见的 XXL-JOB 上下文路径，并把有响应的那个回填到表单。"
+            },
+            "inspect-endpoint": {
+              "label": "检查管理端接口",
+              "description": "探测经典 xxl-job-admin 接口与新版前端的 REST 布局，并报告该服务端实际应答，便于定位登录 404。"
+            }
+          }
+        },
+        "dbx.xxljob.workbench": {
+          "label": "XXL-JOB 控制台",
+          "description": "管理一个 XXL-JOB 实例的执行器分组、任务、触发、调度日志与 GLUE 源码。"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1627 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XXL-JOB</title>
+    <style>
+      :root {
+        --xj-bg: var(--color-background, #ffffff);
+        --xj-fg: var(--color-foreground, #18181b);
+        --xj-card: var(--color-card, #ffffff);
+        --xj-border: var(--color-border, #e4e4e7);
+        --xj-muted: var(--color-muted, #f4f4f5);
+        --xj-muted-fg: var(--color-muted-foreground, #71717a);
+        --xj-primary: var(--color-primary, #2563eb);
+        --xj-primary-fg: var(--color-primary-foreground, #ffffff);
+        --xj-danger: var(--color-destructive, #dc2626);
+        --xj-ok: #15803d;
+        --xj-ok-bg: rgba(21, 128, 61, 0.12);
+        --xj-warn: #b45309;
+        --xj-warn-bg: rgba(180, 83, 9, 0.12);
+        --xj-info-bg: rgba(37, 99, 235, 0.1);
+        --xj-radius: var(--radius-lg, 10px);
+        color-scheme: light dark;
+      }
+      html[data-dbx-theme="dark"] {
+        --xj-ok: #4ade80;
+        --xj-ok-bg: rgba(74, 222, 128, 0.14);
+        --xj-warn: #fbbf24;
+        --xj-warn-bg: rgba(251, 191, 36, 0.14);
+        --xj-info-bg: rgba(96, 165, 250, 0.16);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif);
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--xj-fg);
+        background: var(--xj-bg);
+      }
+      button { font: inherit; color: inherit; }
+      h2, h3 { margin: 0; }
+      .app { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+      /* --- top bar --- */
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--xj-border);
+        background: var(--xj-card);
+      }
+      .brand { display: flex; align-items: center; gap: 9px; font-weight: 650; }
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #ff8a4c, #e94f37);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+      }
+      .endpoint {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        color: var(--xj-muted-fg);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--xj-ok); flex: none; }
+      .dot.off { background: var(--xj-muted-fg); }
+      .spacer { flex: 1; }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 28px;
+        padding: 0 11px;
+        border-radius: 8px;
+        border: 1px solid var(--xj-border);
+        background: var(--xj-card);
+        color: var(--xj-fg);
+        font-size: 12.5px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .btn:hover { background: var(--xj-muted); }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn.primary { background: var(--xj-primary); border-color: var(--xj-primary); color: var(--xj-primary-fg); }
+      .btn.primary:hover { opacity: 0.9; background: var(--xj-primary); }
+      .btn.danger { color: var(--xj-danger); border-color: color-mix(in srgb, var(--xj-danger) 40%, var(--xj-border)); }
+      .btn.danger:hover { background: color-mix(in srgb, var(--xj-danger) 10%, transparent); }
+      .btn.ghost { border-color: transparent; background: transparent; }
+      .btn.ghost:hover { background: var(--xj-muted); }
+      .btn.small { height: 24px; padding: 0 8px; font-size: 12px; }
+
+      /* --- tabs --- */
+      .tabs { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--xj-border); background: var(--xj-card); }
+      .tab {
+        padding: 9px 12px;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--xj-muted-fg);
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .tab:hover { color: var(--xj-fg); }
+      .tab.active { color: var(--xj-primary); border-bottom-color: var(--xj-primary); font-weight: 600; }
+
+      /* --- body layout --- */
+      .body { display: flex; flex: 1; min-height: 0; }
+      .sidebar {
+        width: 232px;
+        flex: none;
+        border-right: 1px solid var(--xj-border);
+        overflow: auto;
+        padding: 10px 8px 16px;
+        background: color-mix(in srgb, var(--xj-muted) 45%, var(--xj-bg));
+      }
+      .sidebar-title {
+        padding: 4px 8px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--xj-muted-fg);
+      }
+      .group-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 7px 9px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: transparent;
+        cursor: pointer;
+        margin-bottom: 2px;
+      }
+      .group-item:hover { background: var(--xj-muted); }
+      .group-item.active { background: var(--xj-info-bg); border-color: color-mix(in srgb, var(--xj-primary) 35%, transparent); }
+      .group-item .name { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 550; }
+      .group-item .meta { color: var(--xj-muted-fg); font-size: 11.5px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .content { flex: 1; min-width: 0; overflow: auto; padding: 14px 16px 24px; }
+
+      .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+      .toolbar input, .toolbar select {
+        height: 28px;
+        padding: 0 9px;
+        border-radius: 8px;
+        border: 1px solid var(--color-input, var(--xj-border));
+        background: var(--xj-card);
+        color: var(--xj-fg);
+        font: inherit;
+        font-size: 12.5px;
+      }
+      .toolbar input:focus, .toolbar select:focus { outline: 2px solid var(--color-ring, #93c5fd); outline-offset: 1px; }
+      .toolbar input.wide { width: 220px; }
+      .toolbar input.narrow { width: 110px; }
+      .toolbar label { color: var(--xj-muted-fg); font-size: 12px; }
+
+      /* --- table --- */
+      .table-wrap { border: 1px solid var(--xj-border); border-radius: var(--xj-radius); overflow: hidden; background: var(--xj-card); }
+      table.grid { width: 100%; border-collapse: collapse; }
+      table.grid th, table.grid td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--xj-border); vertical-align: middle; }
+      table.grid th { font-size: 11.5px; font-weight: 650; color: var(--xj-muted-fg); background: color-mix(in srgb, var(--xj-muted) 60%, var(--xj-card)); white-space: nowrap; }
+      table.grid tbody tr:last-child td { border-bottom: 0; }
+      table.grid tbody tr:hover td { background: color-mix(in srgb, var(--xj-muted) 55%, transparent); }
+      table.grid td.right, table.grid th.right { text-align: right; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+      .muted { color: var(--xj-muted-fg); }
+      .cell-sub { color: var(--xj-muted-fg); font-size: 11.5px; margin-top: 1px; }
+      .actions { display: inline-flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
+      .link {
+        border: 0;
+        background: transparent;
+        color: var(--xj-primary);
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 5px;
+        font-size: 12px;
+      }
+      .link:hover { background: var(--xj-info-bg); }
+      .link:disabled { color: var(--xj-muted-fg); opacity: 0.6; cursor: not-allowed; background: transparent; }
+      .link.danger { color: var(--xj-danger); }
+      .link.danger:hover { background: color-mix(in srgb, var(--xj-danger) 12%, transparent); }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 550;
+        white-space: nowrap;
+      }
+      .badge.ok { color: var(--xj-ok); background: var(--xj-ok-bg); }
+      .badge.warn { color: var(--xj-warn); background: var(--xj-warn-bg); }
+      .badge.neutral { color: var(--xj-muted-fg); background: var(--xj-muted); }
+      .badge.bad { color: var(--xj-danger); background: color-mix(in srgb, var(--xj-danger) 12%, transparent); }
+
+      .pager { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 10px 2px 0; color: var(--xj-muted-fg); font-size: 12px; }
+
+      /* --- report --- */
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+      .card { border: 1px solid var(--xj-border); border-radius: var(--xj-radius); background: var(--xj-card); padding: 12px 14px; }
+      .card .label { color: var(--xj-muted-fg); font-size: 11.5px; }
+      .card .value { font-size: 22px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+      .panel { border: 1px solid var(--xj-border); border-radius: var(--xj-radius); background: var(--xj-card); padding: 14px; margin-bottom: 14px; }
+      .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+      .panel-title h3 { font-size: 13px; font-weight: 650; }
+      /* --- trend line chart (SVG lines + HTML overlay) ---
+         The SVG is stretched with preserveAspectRatio="none" so viewBox
+         percentages map linearly onto the rendered box; strokes stay crisp
+         via vector-effect and all text/hit areas are HTML positioned by
+         percentage, which keeps hover hit-testing exact at any card width. */
+      .chart { position: relative; height: 210px; }
+      .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      .chart .grid-line { stroke: var(--xj-border); stroke-width: 1; }
+      .chart .trend-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+      .chart .trend-line.ok { stroke: var(--xj-ok); }
+      .chart .trend-line.bad { stroke: var(--xj-danger); }
+      .chart .trend-line.run { stroke: var(--xj-warn); }
+      .chart-ylabel { position: absolute; left: 0; transform: translateY(-50%); font-size: 10px; color: var(--xj-muted-fg); text-align: right; pointer-events: none; }
+      .chart-day { position: absolute; bottom: 0; transform: translateX(-50%); font-size: 10.5px; color: var(--xj-muted-fg); white-space: nowrap; pointer-events: none; }
+      .chart-dot { position: absolute; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px var(--xj-card); pointer-events: none; }
+      .chart-dot.ok { background: var(--xj-ok); }
+      .chart-dot.bad { background: var(--xj-danger); }
+      .chart-dot.run { background: var(--xj-warn); }
+      .chart-guide { position: absolute; width: 0; border-left: 1px dashed var(--xj-muted-fg); opacity: 0; pointer-events: none; }
+      .chart-overlay { position: absolute; cursor: crosshair; }
+      .chart-tip {
+        position: absolute; top: 0; left: 0; pointer-events: none;
+        background: var(--xj-card); border: 1px solid var(--xj-border); border-radius: 8px;
+        padding: 7px 10px; font-size: 12px; line-height: 1.5;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+        transform: translate(-50%, -100%); white-space: nowrap;
+        opacity: 0; z-index: 6;
+      }
+      .chart-tip.on { opacity: 1; }
+      .chart-tip .tip-title { font-weight: 650; margin-bottom: 3px; }
+      .chart-tip .tip-row { display: flex; align-items: center; gap: 6px; min-width: 108px; }
+      .chart-tip .tip-row b { margin-left: auto; font-variant-numeric: tabular-nums; }
+      .chart-tip .swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+      .legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--xj-muted-fg); }
+      .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+
+      /* --- modal --- */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 40px 16px;
+        overflow: auto;
+        background: rgba(9, 12, 20, 0.45);
+        backdrop-filter: blur(1.5px);
+      }
+      .modal {
+        width: min(560px, 100%);
+        border-radius: 12px;
+        border: 1px solid var(--xj-border);
+        background: var(--xj-card);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 80px);
+      }
+      .modal.wide { width: min(880px, 100%); }
+      .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--xj-border); }
+      .modal-head h2 { font-size: 14.5px; font-weight: 650; }
+      .modal-head .hint { margin: 3px 0 0; color: var(--xj-muted-fg); font-size: 12px; }
+      .modal-body { padding: 14px 16px; overflow: auto; }
+      .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--xj-border); }
+      .icon-btn { border: 0; background: transparent; cursor: pointer; color: var(--xj-muted-fg); font-size: 14px; padding: 2px 6px; border-radius: 6px; }
+      .icon-btn:hover { background: var(--xj-muted); }
+
+      .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+      .form-grid .full { grid-column: 1 / -1; }
+      .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+      .field > span { font-size: 12px; color: var(--xj-muted-fg); }
+      .field > span b { color: var(--xj-danger); font-weight: 600; }
+      .field input, .field select, .field textarea {
+        width: 100%;
+        height: 30px;
+        padding: 0 9px;
+        border-radius: 8px;
+        border: 1px solid var(--color-input, var(--xj-border));
+        background: var(--xj-bg);
+        color: var(--xj-fg);
+        font: inherit;
+        font-size: 12.5px;
+      }
+      .field textarea { height: auto; min-height: 60px; padding: 6px 9px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--color-ring, #93c5fd); outline-offset: 1px; }
+      .field .tip { font-size: 11.5px; color: var(--xj-muted-fg); }
+      .row-actions { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--xj-muted-fg); }
+      .row-actions select {
+        height: 26px;
+        padding: 0 6px;
+        border-radius: 6px;
+        border: 1px solid var(--color-input, var(--xj-border));
+        background: var(--xj-card);
+        color: var(--xj-fg);
+        font-size: 12px;
+      }
+
+      pre.logview {
+        margin: 0;
+        padding: 12px;
+        min-height: 220px;
+        max-height: 52vh;
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--xj-border);
+        background: color-mix(in srgb, var(--xj-muted) 55%, var(--xj-bg));
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      /* --- states --- */
+      .blank { display: grid; place-items: center; flex: 1; padding: 48px 24px; text-align: center; }
+      .blank-inner { max-width: 420px; }
+      .blank h2 { font-size: 15px; margin-bottom: 6px; }
+      .blank p { margin: 0 0 14px; color: var(--xj-muted-fg); line-height: 1.7; }
+      .empty { padding: 34px 12px; text-align: center; color: var(--xj-muted-fg); font-size: 12.5px; }
+      .banner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 16px 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid color-mix(in srgb, var(--xj-warn) 40%, var(--xj-border));
+        background: var(--xj-warn-bg);
+        color: var(--xj-warn);
+        font-size: 12.5px;
+      }
+      .banner[hidden] { display: none; }
+      .banner.notice {
+        border-color: color-mix(in srgb, var(--xj-primary) 40%, var(--xj-border));
+        background: var(--xj-info-bg);
+        color: var(--xj-primary);
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 26px;
+        transform: translateX(-50%);
+        z-index: 90;
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--xj-border);
+        background: var(--xj-card);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+        font-size: 12.5px;
+        max-width: min(560px, 90vw);
+      }
+      .toast[hidden] { display: none; }
+      .toast.error { border-color: color-mix(in srgb, var(--xj-danger) 45%, var(--xj-border)); color: var(--xj-danger); }
+      .toast.ok { border-color: color-mix(in srgb, var(--xj-ok) 45%, var(--xj-border)); color: var(--xj-ok); }
+      .spin { display: inline-block; width: 11px; height: 11px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.75s linear infinite; vertical-align: -1px; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">XXL</span>XXL-JOB</div>
+        <div class="endpoint"><span class="dot off" id="state-dot"></span><span id="endpoint">正在连接…</span></div>
+        <div class="spacer"></div>
+        <button class="btn ghost" id="btn-relogin" title="重新登录管理端">重新登录</button>
+        <button class="btn" id="btn-refresh"><span id="refresh-label">刷新</span></button>
+      </header>
+
+      <div class="banner" id="banner" hidden>
+        <span id="banner-text">连接会话已失效。</span>
+        <div class="spacer"></div>
+        <button class="btn small" id="btn-reconnect">重新连接</button>
+      </div>
+
+      <div class="banner notice" id="notice" hidden>
+        <span id="notice-text"></span>
+        <div class="spacer"></div>
+        <button class="btn small" id="btn-notice-close">知道了</button>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="jobs">任务管理</button>
+        <button class="tab" data-tab="logs">调度日志</button>
+        <button class="tab" data-tab="report">运行报表</button>
+      </nav>
+
+      <div class="body" id="app-body" hidden>
+        <aside class="sidebar">
+          <div class="sidebar-title">执行器分组</div>
+          <button class="group-item active" data-group="0">
+            <span class="name">全部执行器<span class="muted" id="group-count-all">-</span></span>
+            <span class="meta">不按分组过滤</span>
+          </button>
+          <div id="group-list"></div>
+        </aside>
+
+        <section class="content">
+          <!-- 任务管理 -->
+          <div id="view-jobs">
+            <div class="toolbar">
+              <input id="job-keyword" class="wide" placeholder="搜索任务…" />
+              <select id="job-field">
+                <option value="jobDesc">任务描述</option>
+                <option value="executorHandler">JobHandler</option>
+                <option value="author">负责人</option>
+              </select>
+              <select id="job-status">
+                <option value="-1">全部状态</option>
+                <option value="1">运行中</option>
+                <option value="0">已停止</option>
+              </select>
+              <button class="btn" id="btn-job-search">搜索</button>
+              <div class="spacer"></div>
+              <button class="btn primary" id="btn-job-new">新建任务</button>
+            </div>
+            <div class="table-wrap">
+              <table class="grid">
+                <thead>
+                  <tr>
+                    <th style="width: 56px">ID</th>
+                    <th>任务描述</th>
+                    <th>JobHandler</th>
+                    <th>调度配置</th>
+                    <th>负责人</th>
+                    <th style="width: 84px">状态</th>
+                    <th class="right" style="width: 240px">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="job-rows"></tbody>
+              </table>
+              <div id="job-empty" class="empty" hidden>没有符合条件的任务。</div>
+            </div>
+            <div class="pager">
+              <span id="job-total">共 0 条</span>
+              <button class="btn small" id="job-prev">上一页</button>
+              <span id="job-page">1 / 1</span>
+              <button class="btn small" id="job-next">下一页</button>
+            </div>
+          </div>
+
+          <!-- 调度日志 -->
+          <div id="view-logs" hidden>
+            <div class="toolbar">
+              <label>任务 ID</label>
+              <input id="log-jobid" class="narrow" placeholder="全部" inputmode="numeric" />
+              <select id="log-status">
+                <option value="-1">全部调度结果</option>
+                <option value="1">成功</option>
+                <option value="2">失败</option>
+                <option value="3">进行中</option>
+              </select>
+              <label>时间</label>
+              <input id="log-from" type="datetime-local" />
+              <span class="muted">至</span>
+              <input id="log-to" type="datetime-local" />
+              <button class="btn" id="btn-log-search">查询</button>
+              <div class="spacer"></div>
+              <button class="btn" id="btn-log-reset">重置</button>
+            </div>
+            <div class="table-wrap">
+              <table class="grid">
+                <thead>
+                  <tr>
+                    <th style="width: 56px">ID</th>
+                    <th>任务</th>
+                    <th>执行器地址</th>
+                    <th>调度时间</th>
+                    <th>调度结果</th>
+                    <th>执行结果</th>
+                    <th class="right" style="width: 130px">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="log-rows"></tbody>
+              </table>
+              <div id="log-empty" class="empty" hidden>没有符合条件的调度日志。</div>
+            </div>
+            <div class="pager">
+              <span id="log-total">共 0 条</span>
+              <button class="btn small" id="log-prev">上一页</button>
+              <span id="log-page">1 / 1</span>
+              <button class="btn small" id="log-next">下一页</button>
+            </div>
+          </div>
+
+          <!-- 运行报表 -->
+          <div id="view-report" hidden>
+            <div class="cards">
+              <div class="card"><div class="label">执行器分组</div><div class="value" id="stat-groups">-</div></div>
+              <div class="card"><div class="label">任务总数</div><div class="value" id="stat-jobs">-</div></div>
+              <div class="card"><div class="label">运行中</div><div class="value" id="stat-running">-</div></div>
+              <div class="card"><div class="label">已停止</div><div class="value" id="stat-stopped">-</div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3>调度趋势</h3>
+                <div class="row-actions">
+                  <div class="legend">
+                    <span><i style="background: var(--xj-ok)"></i>成功</span>
+                    <span><i style="background: var(--xj-danger)"></i>失败</span>
+                    <span><i style="background: var(--xj-warn)"></i>运行中</span>
+                  </div>
+                  <select id="report-days">
+                    <option value="7">近 7 天</option>
+                    <option value="14">近 14 天</option>
+                    <option value="30">近 30 天</option>
+                  </select>
+                </div>
+              </div>
+              <div class="chart" id="report-chart"></div>
+              <div class="empty" id="report-empty" hidden>当前管理端版本未提供调度统计接口。</div>
+            </div>
+            <div class="panel">
+              <div class="panel-title"><h3>执行器分组</h3></div>
+              <table class="grid">
+                <thead>
+                  <tr>
+                    <th style="width: 56px">ID</th>
+                    <th>AppName</th>
+                    <th>名称</th>
+                    <th>注册方式</th>
+                    <th>在线地址</th>
+                  </tr>
+                </thead>
+                <tbody id="report-groups"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="blank" id="no-connection" hidden>
+        <div class="blank-inner">
+          <h2>未绑定 XXL-JOB 连接</h2>
+          <p>请从侧边栏已保存的 XXL-JOB 连接打开此工作台，或新建一个连接并测试后保存。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script>
+      "use strict";
+
+      const PAGE_SIZE = 20;
+      const JOB_FIELDS = ["jobGroup", "jobDesc", "author", "alarmEmail", "scheduleType", "scheduleConf", "glueType", "executorHandler", "executorParam", "executorRouteStrategy", "childJobId", "misfireStrategy", "executorBlockStrategy", "executorTimeout", "executorFailRetryCount"];
+
+      const state = {
+        connectionId: "",
+        endpoint: "",
+        tab: "jobs",
+        groups: [],
+        groupId: 0,
+        jobs: { total: 0, page: 0, status: -1, keyword: "", field: "jobDesc" },
+        logs: { total: 0, page: 0, status: -1, jobId: 0, groupId: -1, filterTime: "" },
+        report: { days: 7, data: null },
+        sessionLost: false,
+      };
+
+      const el = (id) => document.getElementById(id);
+
+      // --- small helpers -------------------------------------------------
+      function esc(value) {
+        return String(value === null || value === undefined ? "" : value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function num(value, fallback = 0) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      // 2.4.1 serializes Date fields (triggerTime, addTime, …) as ISO-8601
+      // strings with an offset, while older consoles send epoch millis. Both
+      // shapes, plus epoch seconds, are normalized to the console's own
+      // "yyyy-MM-dd HH:mm:ss" in the browser's timezone.
+      function fmtTime(value) {
+        if (value === null || value === undefined || value === "" || value === 0 || value === "0") return "—";
+        let date = null;
+        if (typeof value === "string" && !/^\d+$/.test(value.trim())) {
+          const parsed = new Date(value);
+          if (!Number.isNaN(parsed.getTime())) date = parsed;
+        } else {
+          const parsed = Number(value);
+          if (Number.isFinite(parsed) && parsed > 0) date = new Date(parsed < 1e11 ? parsed * 1000 : parsed);
+        }
+        if (!date || Number.isNaN(date.getTime())) return String(value);
+        const pad = (part) => String(part).padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      }
+
+      function scheduleText(job) {
+        const type = String(job.scheduleType || "NONE");
+        const conf = String(job.scheduleConf || "");
+        if (type === "NONE") return "不调度";
+        if (type === "FIX_RATE") return `固定频率 ${conf} 秒`;
+        if (type === "FIX_DELAY") return `固定延迟 ${conf} 秒`;
+        return conf || "Cron";
+      }
+
+      function pathOf(url) {
+        try {
+          const parsed = new URL(url);
+          return parsed.pathname && parsed.pathname !== "/" ? parsed.pathname.replace(/\/$/, "") : "/";
+        } catch (error) {
+          return "/";
+        }
+      }
+
+      function groupLabel(groupId) {
+        const group = state.groups.find((entry) => num(entry.id) === num(groupId));
+        return group ? String(group.appname || group.title || groupId) : `分组 ${groupId}`;
+      }
+
+      function statusBadge(status) {
+        return num(status) === 1 ? '<span class="badge ok">运行中</span>' : '<span class="badge neutral">已停止</span>';
+      }
+
+      function logState(log) {
+        const triggerCode = num(log.triggerCode, -1);
+        const handleCode = num(log.handleCode, 0);
+        if (triggerCode !== 200 && triggerCode !== 0) return { text: "调度失败", cls: "bad" };
+        if (handleCode === 200) return { text: "执行成功", cls: "ok" };
+        if (handleCode === 500) return { text: "执行失败", cls: "bad" };
+        if (handleCode === 0 || log.handleCode === null || log.handleCode === undefined) return { text: "运行中", cls: "warn" };
+        return { text: `结果 ${handleCode}`, cls: "neutral" };
+      }
+
+      let toastTimer = 0;
+      function toast(message, type = "info") {
+        const node = el("toast");
+        node.textContent = message;
+        node.className = `toast${type === "error" ? " error" : type === "ok" ? " ok" : ""}`;
+        node.hidden = false;
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+          node.hidden = true;
+        }, type === "error" ? 6000 : 3000);
+      }
+
+      function setBanner(visible, message) {
+        state.sessionLost = visible;
+        el("banner").hidden = !visible;
+        if (message) el("banner-text").textContent = message;
+        el("state-dot").className = `dot${visible ? " off" : ""}`;
+      }
+
+      // --- bridge --------------------------------------------------------
+      async function api(method, params = {}, timeoutMs = 30000) {
+        const payload = Object.assign({ connectionId: state.connectionId }, params);
+        try {
+          const result = await window.dbxPlugin.invoke(method, payload, { timeoutMs });
+          setBanner(false);
+          return result;
+        } catch (error) {
+          const message = (error && error.message) || String(error);
+          if (message.includes("会话已失效") || message.includes("重新打开该连接")) {
+            setBanner(true, "连接会话已失效，请重新连接后继续操作。");
+          } else if (message.includes("登录失败") || message.includes("已过期")) {
+            setBanner(true, "XXL-JOB 管理端登录已失效，可先尝试“重新登录”，仍失败时重新打开连接。");
+          }
+          throw error;
+        }
+      }
+
+      function busy(button, active) {
+        if (!button) return;
+        if (active) {
+          button.dataset.original = button.textContent;
+          button.disabled = true;
+          button.innerHTML = '<span class="spin"></span> 处理中';
+        } else {
+          button.disabled = false;
+          if (button.dataset.original) button.textContent = button.dataset.original;
+        }
+      }
+
+      // --- modal ---------------------------------------------------------
+      function openModal(options) {
+        const overlay = document.createElement("div");
+        overlay.className = "overlay";
+        overlay.innerHTML = `
+          <div class="modal${options.wide ? " wide" : ""}" role="dialog" aria-modal="true">
+            <div class="modal-head">
+              <div>
+                <h2>${esc(options.title || "")}</h2>
+                ${options.subtitle ? `<p class="hint">${esc(options.subtitle)}</p>` : ""}
+              </div>
+              <button class="icon-btn" data-close aria-label="关闭">&#10005;</button>
+            </div>
+            <div class="modal-body"></div>
+            <div class="modal-foot"></div>
+          </div>`;
+        const body = overlay.querySelector(".modal-body");
+        const footer = overlay.querySelector(".modal-foot");
+        if (typeof options.body === "string") body.innerHTML = options.body;
+        else if (options.body) body.appendChild(options.body);
+        if (typeof options.footer === "string") footer.innerHTML = options.footer;
+        else if (options.footer) footer.appendChild(options.footer);
+        if (!options.footer) footer.remove();
+        const close = () => {
+          overlay.remove();
+          document.removeEventListener("keydown", onKey);
+          if (options.onClose) options.onClose();
+        };
+        function onKey(event) {
+          if (event.key === "Escape") close();
+        }
+        document.addEventListener("keydown", onKey);
+        overlay.addEventListener("click", (event) => {
+          if (event.target === overlay || event.target.closest("[data-close]")) close();
+        });
+        document.body.appendChild(overlay);
+        return { overlay, body, footer, close };
+      }
+
+      function button(label, variant, onClick) {
+        const node = document.createElement("button");
+        node.className = `btn${variant ? ` ${variant}` : ""}`;
+        node.textContent = label;
+        if (onClick) node.addEventListener("click", onClick);
+        return node;
+      }
+
+      function confirmDialog(options) {
+        return new Promise((resolve) => {
+          const footer = document.createElement("div");
+          footer.style.display = "contents";
+          let settled = false;
+          const modal = openModal({
+            title: options.title,
+            body: `<p style="margin:0;line-height:1.7">${esc(options.message)}</p>`,
+            footer,
+            onClose: () => {
+              if (!settled) resolve(false);
+            },
+          });
+          footer.appendChild(button("取消", "ghost", () => {
+            settled = true;
+            modal.close();
+            resolve(false);
+          }));
+          footer.appendChild(button(options.confirmLabel || "确定", options.danger ? "danger" : "primary", () => {
+            settled = true;
+            modal.close();
+            resolve(true);
+          }));
+        });
+      }
+
+      // --- overview & groups --------------------------------------------
+      async function loadOverview() {
+        const overview = await api("xxljob/overview", {}, 60000);
+        state.endpoint = overview.baseUrl || "";
+        state.groups = Array.isArray(overview.groups) ? overview.groups : [];
+        state.report.data = overview;
+        el("endpoint").textContent = state.endpoint || "XXL-JOB";
+        if (overview.autoDetected) {
+          el("notice-text").textContent = `管理端实际地址为 ${state.endpoint}：连接配置里的上下文路径可能不正确，建议改为“${pathOf(state.endpoint)}”。`;
+          el("notice").hidden = false;
+        }
+        el("group-count-all").textContent = String(state.groups.length);
+        el("stat-groups").textContent = String(num(overview.stats && overview.stats.groups));
+        el("stat-jobs").textContent = String(num(overview.stats && overview.stats.jobs));
+        el("stat-running").textContent = String(num(overview.stats && overview.stats.running));
+        el("stat-stopped").textContent = String(num(overview.stats && overview.stats.stopped));
+        renderGroups();
+        renderReport();
+        try {
+          await window.dbxPlugin.setTitle(`XXL-JOB · ${state.endpoint}`);
+        } catch (error) {
+          /* the host may not grant title updates */
+        }
+      }
+
+      function renderGroups() {
+        const container = el("group-list");
+        if (!state.groups.length) {
+          container.innerHTML = '<div class="empty">暂无执行器分组</div>';
+          return;
+        }
+        container.innerHTML = state.groups
+          .map((group) => {
+            const registry = Array.isArray(group.registryList) ? group.registryList.length : 0;
+            const active = num(state.groupId) === num(group.id) ? " active" : "";
+            return `<button class="group-item${active}" data-group="${num(group.id)}">
+              <span class="name">${esc(group.appname || group.title || group.id)}<span class="muted">#${num(group.id)}</span></span>
+              <span class="meta">${esc(group.title || "")}${registry ? ` · ${registry} 个在线地址` : ""}</span>
+            </button>`;
+          })
+          .join("");
+      }
+
+      // The executor sidebar is shared by all three views, so a selection must
+      // act on the visible one: jobs filter by group, logs reload with the
+      // group pre-applied, and the report narrows the registry table (the
+      // console's trend chart has no per-group dimension).
+      function selectGroup(groupId) {
+        state.groupId = num(groupId);
+        state.jobs.page = 0;
+        el("group-count-all").closest(".group-item").classList.toggle("active", state.groupId === 0);
+        renderGroups();
+        if (state.tab === "logs") {
+          state.logs.groupId = state.groupId > 0 ? state.groupId : -1;
+          state.logs.page = 0;
+          loadLogs().catch((error) => toast(error.message, "error"));
+        } else if (state.tab === "report") {
+          renderReport();
+        } else {
+          loadJobs().catch((error) => toast(error.message, "error"));
+        }
+      }
+
+      // --- jobs ----------------------------------------------------------
+      async function loadJobs() {
+        const result = await api("xxljob/jobs", {
+          groupId: state.groupId,
+          status: state.jobs.status,
+          searchField: state.jobs.field,
+          keyword: state.jobs.keyword,
+          start: state.jobs.page * PAGE_SIZE,
+          length: PAGE_SIZE,
+        });
+        state.jobs.total = num(result.total);
+        renderJobs(Array.isArray(result.jobs) ? result.jobs : []);
+      }
+
+      function renderJobs(jobs) {
+        const tbody = el("job-rows");
+        el("job-empty").hidden = jobs.length > 0;
+        tbody.innerHTML = jobs
+          .map((job) => {
+            const id = num(job.id);
+            const running = num(job.triggerStatus) === 1;
+            // A NONE-scheduled job cannot be started: the console answers
+            // "当前调度类型禁止启动" and only a schedule edit can unlock it.
+            const startable = String(job.scheduleType || "NONE") !== "NONE";
+            return `<tr data-id="${id}">
+              <td class="mono">${id}</td>
+              <td><div>${esc(job.jobDesc || "（无描述）")}</div><div class="cell-sub">${esc(groupLabel(job.jobGroup))}</div></td>
+              <td class="mono">${esc(job.executorHandler || "—")}</td>
+              <td><div class="mono">${esc(scheduleText(job))}</div><div class="cell-sub">${esc(job.executorRouteStrategy || "")}</div></td>
+              <td>${esc(job.author || "—")}</td>
+              <td>${statusBadge(job.triggerStatus)}</td>
+              <td class="right">
+                <div class="actions">
+                  <button class="link" data-act="trigger">触发</button>
+                  <button class="link" data-act="toggle" data-running="${running ? "1" : "0"}" ${running || startable ? "" : `disabled title="调度类型为“不调度”的任务不能启动，请先改为固定频率或 Cron"`}>${running ? "停止" : "启动"}</button>
+                  <button class="link" data-act="logs">日志</button>
+                  <button class="link" data-act="edit">编辑</button>
+                  <button class="link danger" data-act="remove">删除</button>
+                </div>
+              </td>
+            </tr>`;
+          })
+          .join("");
+        renderJobsPager();
+      }
+
+      function renderJobsPager() {
+        const pages = Math.max(1, Math.ceil(state.jobs.total / PAGE_SIZE));
+        el("job-total").textContent = `共 ${state.jobs.total} 条`;
+        el("job-page").textContent = `${state.jobs.page + 1} / ${pages}`;
+        el("job-prev").disabled = state.jobs.page <= 0;
+        el("job-next").disabled = state.jobs.page + 1 >= pages;
+      }
+
+      async function loadJobDetail(id) {
+        return api("xxljob/job", { id }, 60000);
+      }
+
+      async function jobRowAction(id, action, row) {
+        if (action === "edit") return openJobEditor(id);
+        if (action === "logs") return openJobLogs(id);
+        if (action === "trigger") return openTriggerDialog(id);
+        if (action === "toggle") {
+          const running = row.dataset.running === "1";
+          const method = running ? "xxljob/job/stop" : "xxljob/job/start";
+          try {
+            const result = await api(method, { id });
+            toast(result.message || (running ? "任务已停止" : "任务已启动"), "ok");
+            await refresh();
+          } catch (error) {
+            toast(error.message, "error");
+          }
+          return;
+        }
+        if (action === "remove") {
+          const confirmed = await confirmDialog({
+            title: "删除任务",
+            message: `删除后该任务的调度配置会一并移除（ID ${id}）。已产生的调度日志仍会保留。`,
+            confirmLabel: "删除",
+            danger: true,
+          });
+          if (!confirmed) return;
+          try {
+            const result = await api("xxljob/job/remove", { id });
+            toast(result.message || "任务已删除", "ok");
+            await refresh();
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        }
+      }
+
+      // --- job editor -----------------------------------------------------
+      const ROUTE_STRATEGIES = [
+        ["FIRST", "第一个"],
+        ["LAST", "最后一个"],
+        ["ROUND", "轮询"],
+        ["RANDOM", "随机"],
+        ["CONSISTENT_HASH", "一致性 HASH"],
+        ["LEAST_FREQUENTLY_USED", "最不经常使用"],
+        ["LEAST_RECENTLY_USED", "最近最久未使用"],
+        ["FAILOVER", "故障转移"],
+        ["BUSYOVER", "忙碌转移"],
+        ["SHARDING_BROADCAST", "分片广播"],
+      ];
+      const GLUE_TYPES = [
+        ["BEAN", "BEAN"],
+        ["GLUE_GROOVY", "GLUE(Java)"],
+        ["GLUE_SHELL", "GLUE(Shell)"],
+        ["GLUE_PYTHON", "GLUE(Python)"],
+        ["GLUE_NODEJS", "GLUE(NodeJS)"],
+        ["GLUE_PHP", "GLUE(PHP)"],
+        ["GLUE_POWERSHELL", "GLUE(PowerShell)"],
+      ];
+
+      function optionsHtml(pairs, selected) {
+        return pairs
+          .map(([value, label]) => `<option value="${esc(value)}"${String(selected) === value ? " selected" : ""}>${esc(label)}</option>`)
+          .join("");
+      }
+
+      async function openJobEditor(id) {
+        let job = null;
+        if (id) {
+          try {
+            job = await loadJobDetail(id);
+          } catch (error) {
+            toast(error.message, "error");
+            return;
+          }
+        }
+        const isEdit = !!job;
+        const values = job || {
+          jobGroup: state.groupId || (state.groups[0] && state.groups[0].id) || 0,
+          author: "admin",
+          scheduleType: "NONE",
+          scheduleConf: "0 0 0 * * ?",
+          glueType: "BEAN",
+          executorRouteStrategy: "ROUND",
+          misfireStrategy: "DO_NOTHING",
+          executorBlockStrategy: "SERIAL_EXECUTION",
+          executorTimeout: 0,
+          executorFailRetryCount: 0,
+        };
+        const groupOptions = state.groups
+          .map((group) => `<option value="${num(group.id)}"${num(group.id) === num(values.jobGroup) ? " selected" : ""}>${esc(group.appname || group.title)} (#${num(group.id)})</option>`)
+          .join("");
+        const body = `
+          <div class="form-grid">
+            <label class="field"><span>执行器分组 <b>*</b></span><select id="je-jobGroup">${groupOptions}</select></label>
+            <label class="field"><span>任务描述 <b>*</b></span><input id="je-jobDesc" value="${esc(values.jobDesc || "")}" placeholder="例如：每日对账" /></label>
+            <label class="field"><span>负责人</span><input id="je-author" value="${esc(values.author || "admin")}" /></label>
+            <label class="field"><span>报警邮件</span><input id="je-alarmEmail" value="${esc(values.alarmEmail || "")}" placeholder="多个用逗号分隔" /></label>
+            <label class="field"><span>调度类型</span><select id="je-scheduleType">${optionsHtml([["NONE", "不调度"], ["CRON", "CRON"], ["FIX_RATE", "固定频率"], ["FIX_DELAY", "固定延迟"]], values.scheduleType || "NONE")}</select></label>
+            <label class="field"><span>调度配置</span><input id="je-scheduleConf" value="${esc(values.scheduleConf || "")}" placeholder="0 0 0 * * ? 或 30（秒）" /></label>
+            <div class="field full">
+              <div class="row-actions">
+                <button class="btn small" id="je-preview" type="button">预览下次执行时间</button>
+                <span id="je-preview-result" class="tip"></span>
+              </div>
+            </div>
+            <label class="field"><span>运行模式</span><select id="je-glueType">${optionsHtml(GLUE_TYPES, values.glueType || "BEAN")}</select></label>
+            <label class="field"><span>JobHandler <b>*</b></span><input id="je-executorHandler" value="${esc(values.executorHandler || "")}" placeholder="demoJobHandler" /><span class="tip">BEAN 模式必填；GLUE 模式可留空</span></label>
+            <label class="field full"><span>任务参数</span><textarea id="je-executorParam" rows="3" placeholder="传给执行器的参数">${esc(values.executorParam || "")}</textarea></label>
+            <label class="field"><span>路由策略</span><select id="je-executorRouteStrategy">${optionsHtml(ROUTE_STRATEGIES, values.executorRouteStrategy || "ROUND")}</select></label>
+            <label class="field"><span>子任务 ID</span><input id="je-childJobId" value="${esc(values.childJobId || "")}" placeholder="多个用逗号分隔" /></label>
+            <label class="field"><span>调度过期策略</span><select id="je-misfireStrategy">${optionsHtml([["DO_NOTHING", "忽略"], ["FIRE_ONCE_NOW", "立即执行一次"]], values.misfireStrategy || "DO_NOTHING")}</select></label>
+            <label class="field"><span>阻塞处理策略</span><select id="je-executorBlockStrategy">${optionsHtml([["SERIAL_EXECUTION", "单机串行"], ["DISCARD_LATER", "丢弃后续调度"], ["COVER_EARLY", "覆盖之前调度"]], values.executorBlockStrategy || "SERIAL_EXECUTION")}</select></label>
+            <label class="field"><span>任务超时时间（秒，0 为不限）</span><input id="je-executorTimeout" type="number" min="0" value="${num(values.executorTimeout)}" /></label>
+            <label class="field"><span>失败重试次数</span><input id="je-executorFailRetryCount" type="number" min="0" value="${num(values.executorFailRetryCount)}" /></label>
+          </div>`;
+        const footer = document.createElement("div");
+        footer.style.display = "contents";
+        const modal = openModal({
+          title: isEdit ? `编辑任务 #${num(values.id)}` : "新建任务",
+          subtitle: isEdit ? "保存后立即生效，下一次调度使用新的配置。" : "创建后任务默认处于停止状态，需要手动启动。",
+          body,
+          footer,
+          wide: true,
+        });
+        const scheduleType = el("je-scheduleType");
+        const scheduleConf = el("je-scheduleConf");
+        const syncSchedule = () => {
+          const type = scheduleType.value;
+          scheduleConf.disabled = type === "NONE";
+          scheduleConf.placeholder = type === "FIX_RATE" || type === "FIX_DELAY" ? "执行间隔秒数，例如 30" : "0 0 0 * * ?";
+        };
+        scheduleType.addEventListener("change", syncSchedule);
+        syncSchedule();
+        el("je-preview").addEventListener("click", async () => {
+          const target = el("je-preview-result");
+          target.textContent = "计算中…";
+          try {
+            const preview = await api("xxljob/job/nextTriggerTime", {
+              scheduleType: scheduleType.value,
+              scheduleConf: scheduleConf.value,
+            });
+            if (preview.supported === false) target.textContent = preview.message || "当前管理端不支持预览";
+            else if (!preview.times || !preview.times.length) target.textContent = "当前配置不会产生调度";
+            else target.textContent = `下次：${preview.times.slice(0, 3).join("、")}`;
+          } catch (error) {
+            target.textContent = error.message;
+          }
+        });
+        if (isEdit && String(values.glueType || "BEAN") !== "BEAN") {
+          footer.appendChild(button("GLUE 源码", "ghost", () => openGlueEditor(values)));
+        }
+        footer.appendChild(button("取消", "ghost", modal.close));
+        const save = button("保存", "primary", async () => {
+          const payload = { id: isEdit ? num(values.id) : 0 };
+          for (const key of JOB_FIELDS) {
+            const node = el(`je-${key}`);
+            if (!node) continue;
+            payload[key] = node.type === "number" ? num(node.value) : node.value;
+          }
+          if (!num(payload.jobGroup)) return toast("请选择执行器分组", "error");
+          if (!String(payload.jobDesc || "").trim()) return toast("请填写任务描述", "error");
+          busy(save, true);
+          try {
+            const result = await api("xxljob/job/save", { job: payload }, 60000);
+            toast(result.message || "已保存", "ok");
+            modal.close();
+            await refresh();
+          } catch (error) {
+            toast(error.message, "error");
+          } finally {
+            busy(save, false);
+          }
+        });
+        footer.appendChild(save);
+      }
+
+      // --- trigger --------------------------------------------------------
+      async function openTriggerDialog(id) {
+        let job;
+        try {
+          job = await loadJobDetail(id);
+        } catch (error) {
+          toast(error.message, "error");
+          return;
+        }
+        const group = state.groups.find((entry) => num(entry.id) === num(job.jobGroup));
+        const addresses = group && Array.isArray(group.registryList) ? group.registryList.join(",") : (group ? String(group.addressList || "") : "");
+        const body = `
+          <div class="form-grid">
+            <label class="field full"><span>任务</span><input value="${esc(`${num(job.id)} · ${job.jobDesc || ""}`)}" disabled /></label>
+            <label class="field full"><span>任务参数</span><textarea id="tr-param" rows="3">${esc(job.executorParam || "")}</textarea></label>
+            <label class="field full"><span>执行地址</span><input id="tr-address" value="${esc(addresses)}" placeholder="留空则由注册中心自动选择" /><span class="tip">多个地址用逗号分隔；留空表示按路由策略从执行器注册地址中选择。</span></label>
+          </div>`;
+        const footer = document.createElement("div");
+        footer.style.display = "contents";
+        const modal = openModal({ title: "手动触发一次", subtitle: "触发会立即在所选执行器上运行一次，与调度周期无关。", body, footer });
+        footer.appendChild(button("取消", "ghost", modal.close));
+        const run = button("触发", "primary", async () => {
+          busy(run, true);
+          try {
+            const result = await api("xxljob/job/trigger", {
+              id: num(job.id),
+              executorParam: el("tr-param").value,
+              addressList: el("tr-address").value,
+            }, 60000);
+            toast(result.message || "已触发", "ok");
+            modal.close();
+            if (!el("view-logs").hidden) loadLogs().catch(() => {});
+          } catch (error) {
+            toast(error.message, "error");
+          } finally {
+            busy(run, false);
+          }
+        });
+        footer.appendChild(run);
+      }
+
+      // --- GLUE source ----------------------------------------------------
+      async function openGlueEditor(job) {
+        const id = num(job.id);
+        let source = null;
+        try {
+          source = await api("xxljob/code", { id }, 60000);
+        } catch (error) {
+          toast(error.message, "error");
+          return;
+        }
+        if (!source.supported) {
+          toast(source.message || "当前管理端版本的 GLUE 页面无法解析", "error");
+          return;
+        }
+        const body = `<label class="field"><span>${esc(job.glueType || "GLUE")} 源码</span><textarea id="glue-source" rows="18" spellcheck="false">${esc(source.source || "")}</textarea></label>`;
+        const footer = document.createElement("div");
+        footer.style.display = "contents";
+        const modal = openModal({
+          title: `GLUE 源码 #${id}`,
+          subtitle: "保存后需要重新启动任务才会加载新代码。",
+          body,
+          footer,
+          wide: true,
+        });
+        footer.appendChild(button("取消", "ghost", modal.close));
+        const save = button("保存源码", "primary", async () => {
+          busy(save, true);
+          try {
+            const result = await api("xxljob/code/save", {
+              id,
+              glueType: String(job.glueType || "GLUE_SHELL"),
+              source: el("glue-source").value,
+              glueRemark: String(job.glueRemark || "DBX更新"),
+            }, 60000);
+            toast(result.message || "已保存", "ok");
+            modal.close();
+          } catch (error) {
+            toast(error.message, "error");
+          } finally {
+            busy(save, false);
+          }
+        });
+        footer.appendChild(save);
+      }
+
+      // --- logs -----------------------------------------------------------
+      function composeFilterTime() {
+        const from = el("log-from").value;
+        const to = el("log-to").value;
+        const normalize = (value) => (value ? `${value.replace("T", " ")}:00`.slice(0, 19) : "");
+        if (!from && !to) return "";
+        return `${normalize(from) || "2000-01-01 00:00:00"} - ${normalize(to) || "2099-12-31 23:59:59"}`;
+      }
+
+      async function loadLogs() {
+        const result = await api("xxljob/logs", {
+          groupId: state.logs.groupId,
+          jobId: state.logs.jobId,
+          status: state.logs.status,
+          filterTime: state.logs.filterTime,
+          start: state.logs.page * PAGE_SIZE,
+          length: PAGE_SIZE,
+        });
+        state.logs.total = num(result.total);
+        renderLogs(Array.isArray(result.logs) ? result.logs : []);
+      }
+
+      function renderLogs(logs) {
+        el("log-empty").hidden = logs.length > 0;
+        el("log-rows").innerHTML = logs
+          .map((log) => {
+            const id = num(log.id);
+            const state_ = logState(log);
+            const hasExecutor = Boolean(String(log.executorAddress || "").trim());
+            return `<tr data-id="${id}" data-trigger-time="${esc(log.triggerTime ?? "")}">
+              <td class="mono">${id}</td>
+              <td><div>${esc(log.jobDesc || `任务 ${num(log.jobId)}`)}</div><div class="cell-sub mono">#${num(log.jobId)} · ${esc(log.executorHandler || "")}</div></td>
+              <td class="mono">${esc(log.executorAddress || "—")}</td>
+              <td class="mono">${esc(fmtTime(log.triggerTime))}</td>
+              <td><span class="badge ${num(log.triggerCode) === 200 ? "ok" : "bad"}">${num(log.triggerCode) === 200 ? "成功" : "失败"}</span></td>
+              <td><span class="badge ${state_.cls}">${esc(state_.text)}</span></td>
+              <td class="right">
+                <div class="actions">
+                  <button class="link" data-act="detail" ${hasExecutor ? "" : `disabled title="该次调度未路由到执行器，管理端读不到执行日志"`}>日志</button>
+                  <button class="link danger" data-act="kill" ${num(log.triggerCode) === 200 ? "" : `disabled title="只有触发成功的调度才能终止"`}>终止</button>
+                </div>
+              </td>
+            </tr>`;
+          })
+          .join("");
+        const pages = Math.max(1, Math.ceil(state.logs.total / PAGE_SIZE));
+        el("log-total").textContent = `共 ${state.logs.total} 条`;
+        el("log-page").textContent = `${state.logs.page + 1} / ${pages}`;
+        el("log-prev").disabled = state.logs.page <= 0;
+        el("log-next").disabled = state.logs.page + 1 >= pages;
+      }
+
+      async function openLogDetail(log) {
+        const head = `<pre class="logview" id="log-content">加载中…</pre>`;
+        const footer = document.createElement("div");
+        footer.style.display = "contents";
+        const modal = openModal({
+          title: `调度日志 #${num(log.id)}`,
+          subtitle: `${log.jobDesc || ""} · ${log.executorAddress || ""} · ${fmtTime(log.triggerTime)}`,
+          body: head,
+          footer,
+          wide: true,
+        });
+        const pre = el("log-content");
+        let fromLine = 1;
+        let buffer = "";
+        const append = async (reset) => {
+          if (reset) {
+            fromLine = 1;
+            buffer = "";
+            pre.textContent = "加载中…";
+          }
+          const chunk = await api("xxljob/log", { logId: num(log.id), fromLineNum: fromLine }, 60000);
+          buffer += chunk.logContent || "";
+          pre.textContent = buffer || "（暂无日志内容）";
+          pre.scrollTop = pre.scrollHeight;
+          fromLine = num(chunk.toLineNum, fromLine) + 1;
+          more.disabled = !!chunk.end;
+          more.textContent = chunk.end ? "已到末尾" : "继续加载";
+        };
+        const more = button("继续加载", "ghost", () => {
+          append(false).catch((error) => toast(error.message, "error"));
+        });
+        footer.appendChild(button("刷新", "ghost", () => {
+          append(true).catch((error) => toast(error.message, "error"));
+        }));
+        footer.appendChild(more);
+        footer.appendChild(button("终止执行", "danger", async () => {
+          const confirmed = await confirmDialog({ title: "终止执行", message: "向执行器发送终止指令，正在运行的任务会被中断。", confirmLabel: "终止", danger: true });
+          if (!confirmed) return;
+          try {
+            const result = await api("xxljob/log/kill", { logId: num(log.id) });
+            toast(result.message || "已发送终止指令", "ok");
+            await append(true);
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        }));
+        footer.appendChild(button("关闭", "ghost", modal.close));
+        try {
+          await append(true);
+        } catch (error) {
+          pre.textContent = `读取日志失败：${error.message}`;
+        }
+      }
+
+      function openJobLogs(jobId) {
+        switchTab("logs");
+        state.logs.jobId = num(jobId);
+        state.logs.page = 0;
+        state.logs.status = -1;
+        state.logs.filterTime = "";
+        el("log-jobid").value = String(num(jobId));
+        el("log-status").value = "-1";
+        el("log-from").value = "";
+        el("log-to").value = "";
+        loadLogs().catch((error) => toast(error.message, "error"));
+      }
+
+      // --- report ---------------------------------------------------------
+      // renderTrendChart draws the trigger trend as a line chart. Hovering (or
+      // touching) the plot shows a guide line plus a tooltip with the day's
+      // success / failure / running counts.
+      //
+      // Geometry note: the SVG only carries the lines and is stretched with
+      // preserveAspectRatio="none", so viewBox coordinates map linearly onto
+      // the rendered box at any card width. Everything hit-testable (dots,
+      // labels, guide, hover area) is HTML positioned by percentage and sized
+      // against the real overlay rect, which keeps hover accuracy exact —
+      // unlike a letterboxed `meet` SVG, where the drawing is centered inside
+      // the element and mouse math drifts by the letterbox offset.
+      function renderTrendChart(container, chart) {
+        const days = chart.triggerDayList;
+        const series = [
+          { key: "ok", label: "成功", color: "var(--xj-ok)", values: chart.triggerDayCountSuc || [] },
+          { key: "bad", label: "失败", color: "var(--xj-danger)", values: chart.triggerDayCountFail || [] },
+          { key: "run", label: "运行中", color: "var(--xj-warn)", values: chart.triggerDayCountRunning || [] },
+        ];
+        const W = 660;
+        const H = 200;
+        const padL = 36;
+        const padR = 14;
+        const padT = 16;
+        const padB = 26;
+        const plotW = W - padL - padR;
+        const plotH = H - padT - padB;
+        const count = days.length;
+        const peak = Math.max(1, ...days.map((_, i) => series.reduce((sum, s) => sum + num(s.values[i]), 0)));
+        const step = Math.max(1, Math.ceil(peak / 4));
+        const top = step * 4;
+        const px = (i) => (count === 1 ? padL + plotW / 2 : padL + (plotW * i) / (count - 1));
+        const py = (v) => padT + plotH * (1 - v / top);
+        const fx = (v) => v.toFixed(1);
+        const pctX = (v) => `${((v / W) * 100).toFixed(3)}%`;
+        const pctY = (v) => `${((v / H) * 100).toFixed(3)}%`;
+
+        const gridLines = [];
+        const yLabels = [];
+        for (let v = 0; v <= top; v += step) {
+          const gy = py(v);
+          gridLines.push(`<line class="grid-line" x1="${padL}" y1="${fx(gy)}" x2="${W - padR}" y2="${fx(gy)}" vector-effect="non-scaling-stroke"></line>`);
+          yLabels.push(`<div class="chart-ylabel" style="top:${pctY(gy)};width:${pctX(padL - 8)}">${v}</div>`);
+        }
+        // Thin out day labels on the 30-day range so they never overlap.
+        const dayStep = count > 14 ? Math.ceil(count / 14) : 1;
+        const dayLabels = days
+          .map((day, i) => {
+            if (i % dayStep !== 0 && i !== count - 1) return "";
+            return `<div class="chart-day" style="left:${pctX(px(i))}">${esc(String(day).slice(5))}</div>`;
+          })
+          .join("");
+        const lines = series
+          .map((s) => `<polyline class="trend-line ${s.key}" points="${days.map((_, i) => `${fx(px(i))},${fx(py(num(s.values[i])))}`).join(" ")}" vector-effect="non-scaling-stroke"></polyline>`)
+          .join("");
+        const dots = series
+          .map((s) => days.map((_, i) => `<div class="chart-dot ${s.key}" style="left:${pctX(px(i))};top:${pctY(py(num(s.values[i])))}"></div>`).join(""))
+          .join("");
+
+        container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${gridLines.join("")}${lines}</svg>
+          ${yLabels.join("")}
+          ${dayLabels}
+          <div class="chart-guide" style="top:${pctY(padT)};height:${pctY(plotH)}"></div>
+          ${dots}
+          <div class="chart-overlay" style="left:${pctX(padL)};top:${pctY(padT)};width:${pctX(plotW)};height:${pctY(plotH)}" role="img" aria-label="调度趋势折线图"></div>
+          <div class="chart-tip"></div>`;
+
+        const overlay = container.querySelector(".chart-overlay");
+        const guide = container.querySelector(".chart-guide");
+        const tip = container.querySelector(".chart-tip");
+        const hide = () => {
+          guide.style.opacity = "0";
+          tip.classList.remove("on");
+        };
+        const show = (index) => {
+          const index_ = Math.min(count - 1, Math.max(0, index));
+          const gx = px(index_);
+          guide.style.left = pctX(gx);
+          guide.style.opacity = "1";
+          const peakY = Math.min(...series.map((s) => py(num(s.values[index_]))));
+          tip.innerHTML = `<div class="tip-title">${esc(String(days[index_]))}</div>` +
+            series.map((s) => `<div class="tip-row"><span class="swatch" style="background:${s.color}"></span>${s.label}<b>${num(s.values[index_])}</b></div>`).join("");
+          const width = container.clientWidth;
+          const height = container.clientHeight;
+          const left = Math.min(Math.max((gx / W) * width, 72), width - 72);
+          const pointY = (peakY / H) * height;
+          // Keep the tooltip inside the card: flip below the point when it
+          // would otherwise cover the panel header.
+          const below = pointY < 96;
+          tip.style.transform = below ? "translate(-50%, 0)" : "translate(-50%, -100%)";
+          tip.style.left = `${left}px`;
+          tip.style.top = `${below ? pointY + 12 : pointY - 8}px`;
+          tip.classList.add("on");
+        };
+        // The overlay spans exactly the plot area, so the nearest-day index is
+        // a plain ratio of the cursor position within it.
+        const indexAt = (clientX) => {
+          if (count === 1) return 0;
+          const rect = overlay.getBoundingClientRect();
+          return Math.round(((clientX - rect.left) / rect.width) * (count - 1));
+        };
+        overlay.addEventListener("mousemove", (event) => show(indexAt(event.clientX)));
+        overlay.addEventListener("touchmove", (event) => {
+          const touch = event.touches[0];
+          if (touch) show(indexAt(touch.clientX));
+        }, { passive: true });
+        overlay.addEventListener("mouseleave", hide);
+        overlay.addEventListener("touchend", hide);
+      }
+
+      function renderReport() {
+        const data = state.report.data;
+        if (!data) return;
+        const chart = data.chart || null;
+        const container = el("report-chart");
+        if (!chart || !Array.isArray(chart.triggerDayList) || !chart.triggerDayList.length) {
+          container.innerHTML = "";
+          el("report-empty").hidden = false;
+        } else {
+          el("report-empty").hidden = true;
+          renderTrendChart(container, chart);
+        }
+        // A group picked in the sidebar narrows the registry table; the trend
+        // chart itself is admin-wide and has no per-group dimension.
+        const groups = state.groupId > 0
+          ? state.groups.filter((group) => num(group.id) === state.groupId)
+          : state.groups;
+        el("report-groups").innerHTML = groups.length
+          ? groups
+              .map((group) => {
+                const registry = Array.isArray(group.registryList) && group.registryList.length ? group.registryList.join(", ") : String(group.addressList || "") || "—";
+                return `<tr>
+                  <td class="mono">${num(group.id)}</td>
+                  <td class="mono">${esc(group.appname || "")}</td>
+                  <td>${esc(group.title || "")}</td>
+                  <td>${num(group.addressType) === 1 ? "手动录入" : "自动注册"}</td>
+                  <td class="mono">${esc(registry)}</td>
+                </tr>`;
+              })
+              .join("")
+          : '<tr><td colspan="5" class="empty">暂无执行器分组</td></tr>';
+      }
+
+      async function loadReport(days) {
+        if (days) state.report.days = num(days);
+        const data = await api("xxljob/dashboard", { days: state.report.days }, 90000);
+        state.report.data = data;
+        el("stat-groups").textContent = String(num(data.stats && data.stats.groups));
+        el("stat-jobs").textContent = String(num(data.stats && data.stats.jobs));
+        el("stat-running").textContent = String(num(data.stats && data.stats.running));
+        el("stat-stopped").textContent = String(num(data.stats && data.stats.stopped));
+        renderReport();
+      }
+
+      // --- global actions -------------------------------------------------
+      function switchTab(tab) {
+        state.tab = tab;
+        for (const node of document.querySelectorAll(".tab")) node.classList.toggle("active", node.dataset.tab === tab);
+        el("view-jobs").hidden = tab !== "jobs";
+        el("view-logs").hidden = tab !== "logs";
+        el("view-report").hidden = tab !== "report";
+        if (tab === "logs") {
+          // Carry the sidebar selection into the log list.
+          state.logs.groupId = state.groupId > 0 ? state.groupId : -1;
+          loadLogs().catch((error) => toast(error.message, "error"));
+        }
+        if (tab === "report") loadReport().catch((error) => toast(error.message, "error"));
+      }
+
+      async function refresh() {
+        const label = el("refresh-label");
+        label.innerHTML = '<span class="spin"></span>';
+        try {
+          await loadOverview();
+          await loadJobs();
+          if (state.tab === "logs") await loadLogs();
+          if (state.tab === "report") await loadReport();
+        } catch (error) {
+          toast(error.message, "error");
+        } finally {
+          label.textContent = "刷新";
+        }
+      }
+
+      function wire() {
+        for (const node of document.querySelectorAll(".tab")) {
+          node.addEventListener("click", () => switchTab(node.dataset.tab));
+        }
+        el("btn-refresh").addEventListener("click", refresh);
+        el("btn-relogin").addEventListener("click", async () => {
+          try {
+            const result = await api("xxljob/relogin", {}, 60000);
+            toast(result.message || "已重新登录", "ok");
+            setBanner(false);
+            await refresh();
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+        el("btn-notice-close").addEventListener("click", () => {
+          el("notice").hidden = true;
+        });
+        el("btn-reconnect").addEventListener("click", async () => {
+          try {
+            await window.dbxPlugin.reopenConnection(state.connectionId);
+            setBanner(false);
+            await refresh();
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
+
+        el("group-list").addEventListener("click", (event) => {
+          const item = event.target.closest("[data-group]");
+          if (item) selectGroup(item.dataset.group);
+        });
+        el("group-count-all").closest(".group-item").addEventListener("click", () => selectGroup(0));
+
+        el("btn-job-search").addEventListener("click", () => {
+          state.jobs.keyword = el("job-keyword").value.trim();
+          state.jobs.field = el("job-field").value;
+          state.jobs.status = num(el("job-status").value, -1);
+          state.jobs.page = 0;
+          loadJobs().catch((error) => toast(error.message, "error"));
+        });
+        el("job-keyword").addEventListener("keydown", (event) => {
+          if (event.key === "Enter") el("btn-job-search").click();
+        });
+        el("btn-job-new").addEventListener("click", () => openJobEditor(0));
+        el("job-prev").addEventListener("click", () => {
+          if (state.jobs.page > 0) {
+            state.jobs.page -= 1;
+            loadJobs().catch((error) => toast(error.message, "error"));
+          }
+        });
+        el("job-next").addEventListener("click", () => {
+          state.jobs.page += 1;
+          loadJobs().catch((error) => toast(error.message, "error"));
+        });
+        el("job-rows").addEventListener("click", (event) => {
+          const trigger = event.target.closest("[data-act]");
+          const row = event.target.closest("tr[data-id]");
+          if (!trigger || !row) return;
+          jobRowAction(num(row.dataset.id), trigger.dataset.act, row);
+        });
+
+        el("btn-log-search").addEventListener("click", () => {
+          state.logs.jobId = num(el("log-jobid").value);
+          state.logs.status = num(el("log-status").value, -1);
+          state.logs.filterTime = composeFilterTime();
+          state.logs.groupId = state.groupId > 0 ? state.groupId : -1;
+          state.logs.page = 0;
+          loadLogs().catch((error) => toast(error.message, "error"));
+        });
+        el("btn-log-reset").addEventListener("click", () => {
+          el("log-jobid").value = "";
+          el("log-status").value = "-1";
+          el("log-from").value = "";
+          el("log-to").value = "";
+          state.logs.jobId = 0;
+          state.logs.status = -1;
+          state.logs.filterTime = "";
+          state.logs.page = 0;
+          loadLogs().catch((error) => toast(error.message, "error"));
+        });
+        el("log-prev").addEventListener("click", () => {
+          if (state.logs.page > 0) {
+            state.logs.page -= 1;
+            loadLogs().catch((error) => toast(error.message, "error"));
+          }
+        });
+        el("log-next").addEventListener("click", () => {
+          state.logs.page += 1;
+          loadLogs().catch((error) => toast(error.message, "error"));
+        });
+        el("log-rows").addEventListener("click", (event) => {
+          const trigger = event.target.closest("[data-act]");
+          const row = event.target.closest("tr[data-id]");
+          if (!trigger || !row) return;
+          const id = num(row.dataset.id);
+          if (trigger.dataset.act === "detail") {
+            const log = { id, jobDesc: "", executorAddress: "", triggerTime: row.dataset.triggerTime || "" };
+            const cells = row.querySelectorAll("td");
+            log.jobDesc = cells[1] ? cells[1].textContent.trim() : "";
+            log.executorAddress = cells[2] ? cells[2].textContent.trim() : "";
+            openLogDetail(log);
+          } else if (trigger.dataset.act === "kill") {
+            confirmDialog({ title: "终止执行", message: `向调度日志 #${id} 对应的执行器发送终止指令。`, confirmLabel: "终止", danger: true }).then(
+              async (confirmed) => {
+                if (!confirmed) return;
+                try {
+                  const result = await api("xxljob/log/kill", { logId: id });
+                  toast(result.message || "已发送终止指令", "ok");
+                  await loadLogs();
+                } catch (error) {
+                  toast(error.message, "error");
+                }
+              },
+            );
+          }
+        });
+
+        el("report-days").addEventListener("change", () => {
+          loadReport(el("report-days").value).catch((error) => toast(error.message, "error"));
+        });
+      }
+
+      // --- bootstrap -------------------------------------------------------
+      function start(context) {
+        state.connectionId = (context && context.connectionId) || "";
+        if (!state.connectionId) {
+          el("app-body").hidden = true;
+          el("no-connection").hidden = false;
+          el("endpoint").textContent = "未绑定连接";
+          return;
+        }
+        el("app-body").hidden = false;
+        el("no-connection").hidden = true;
+        refresh();
+      }
+
+      if (!window.dbxPlugin) {
+        el("no-connection").hidden = false;
+        el("app-body").hidden = true;
+        el("endpoint").textContent = "缺少 DBX 宿主";
+      } else {
+        wire();
+        window.dbxPlugin.ready.then((context) => {
+          start(context);
+        });
+        window.dbxPlugin.onContext((context) => {
+          if ((context && context.connectionId) !== state.connectionId) start(context);
+        });
+        window.dbxPlugin.onEvent((event) => {
+          if (event && event.method === "xxljob/connectionChanged") {
+            const params = event.params || {};
+            const connected = params.state === "connected";
+            setBanner(!connected && params.connectionId === state.connectionId, connected ? "" : "连接已断开，请重新连接后再操作。");
+            if (connected && params.baseUrl) el("endpoint").textContent = params.baseUrl;
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

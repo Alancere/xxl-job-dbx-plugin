@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="XXL-JOB connection">
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#e94f37" />
+  <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="32" cy="34" r="14" />
+    <path d="M32 25v9l7 5" />
+    <path d="M32 12v6M32 50v6" />
+  </g>
+</svg>
