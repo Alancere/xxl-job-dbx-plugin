@@ -20,10 +20,10 @@ import (
 )
 
 const (
-	pluginID    = "dbx.xxljob"
+	pluginID    = "alancere.xxljob"
 	pluginLabel = "XXL-JOB"
-	providerID  = "dbx.xxljob.connection"
-	workbenchID = "dbx.xxljob.workbench"
+	providerID  = "alancere.xxljob.connection"
+	workbenchID = "alancere.xxljob.workbench"
 
 	defaultContextPath = "/xxl-job-admin"
 	defaultTimeoutSecs = 15

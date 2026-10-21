@@ -1,14 +1,14 @@
 {
   "$schema": "https://raw.githubusercontent.com/t8y2/dbx/main/plugins/manifest.schema.json",
   "manifest_version": 1,
-  "id": "dbx.xxljob",
+  "id": "alancere.xxljob",
   "name": "XXL-JOB",
   "icon": "assets/plugin.svg",
   "version": "1.0.4",
-  "publisher": "dbx",
+  "publisher": "alancere",
   "description": "XXL-JOB distributed task scheduler console inside DBX: executor groups, job management, manual trigger, start/stop, scheduling logs, GLUE source, and trigger reports.",
-  "source": "https://github.com/t8y2/dbx",
-  "homepage": "https://github.com/t8y2/dbx/tree/main/plugins/xxl-job",
+  "source": "https://github.com/Alancere/xxl-job-dbx-plugin",
+  "homepage": "https://github.com/Alancere/xxl-job-dbx-plugin",
   "engines": {
     "dbx": ">=0.5.68",
     "host_api": "^1.0"
@@ -26,7 +26,7 @@
   "contributions": [
     {
       "type": "connection-provider",
-      "id": "dbx.xxljob.connection",
+      "id": "alancere.xxljob.connection",
       "label": "XXL-JOB admin",
       "icon": "assets/connection.svg",
       "database_type": "xxljob",
@@ -130,7 +130,7 @@
           "visible_when": { "field": "scheme", "one_of": ["https"] }
         }
       ],
-      "workbench": "dbx.xxljob.workbench",
+      "workbench": "alancere.xxljob.workbench",
       "capabilities": ["test", "connect", "disconnect"],
       "actions": [
         {
@@ -153,7 +153,7 @@
     },
     {
       "type": "workbench",
-      "id": "dbx.xxljob.workbench",
+      "id": "alancere.xxljob.workbench",
       "label": "XXL-JOB console",
       "icon": "assets/plugin.svg",
       "description": "Manage executor groups, jobs, triggers, scheduling logs, and GLUE source of one XXL-JOB instance.",
@@ -170,7 +170,7 @@
     },
     {
       "type": "mcp",
-      "id": "dbx.xxljob.mcp",
+      "id": "alancere.xxljob.mcp",
       "description": "Read executor groups, job definitions, and scheduling logs, and trigger a job run, through the open XXL-JOB connection."
     }
   ],
@@ -179,7 +179,7 @@
       "name": "XXL-JOB",
       "description": "在 DBX 内管理 XXL-JOB 分布式任务调度：执行器分组、任务管理、手动触发、启停、调度日志、GLUE 源码与运行报表。",
       "contributions": {
-        "dbx.xxljob.connection": {
+        "alancere.xxljob.connection": {
           "label": "XXL-JOB 管理端",
           "description": "通过管理端自带的登录表单和 Cookie 会话连接 xxl-job-admin。",
           "fields": {
@@ -216,7 +216,7 @@
             }
           }
         },
-        "dbx.xxljob.workbench": {
+        "alancere.xxljob.workbench": {
           "label": "XXL-JOB 控制台",
           "description": "管理一个 XXL-JOB 实例的执行器分组、任务、触发、调度日志与 GLUE 源码。"
         }

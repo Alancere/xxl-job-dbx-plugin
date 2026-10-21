@@ -50,7 +50,7 @@ DBX_PLUGIN_TARGET=windows-x64 node plugins/xxl-job/package.mjs
 
 `package.mjs` 用 `go build` 交叉编译 Sidecar，并按 DBX 的包规则写出 ZIP 容器（Deflate、UTF-8 文件名、Unix 权限、无目录条目、`checksums.json` 覆盖全部文件）。产物是一个**未签名**的候选包，安装时需要：
 
-- 打开 **插件中心 → 允许安装未签名开发包**，安装 `dist/dbx.xxljob-1.0.0-<target>.dbxp`；或
+- 打开 **插件中心 → 允许安装未签名开发包**，安装 `dist/alancere.xxljob-1.0.4-<target>.dbxp`；或
 - 用 `dbx-plugin-packager sign` 由仓库密钥签名后再安装（正式发布流程见 `plugins/RELEASING.md`）。
 
 一次完整的本地校验（测试 → 打包 → 校验每个文件的 SHA-256 与可执行位 → 启动真实 Sidecar 连接模拟管理端）：

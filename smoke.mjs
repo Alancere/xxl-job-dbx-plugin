@@ -77,7 +77,7 @@ try {
   });
   const client = jsonlClient(sidecar);
   const lifecycle = {
-    provider: { id: "dbx.xxljob.connection", databaseType: "xxljob" },
+    provider: { id: "alancere.xxljob.connection", databaseType: "xxljob" },
     connection: {
       id: "smoke-connection",
       name: "Smoke XXL-JOB",
@@ -92,7 +92,7 @@ try {
 
   const handshake = await client.call("plugin/initialize", { host: { protocolVersions: [1] } });
   assert(handshake.result?.protocolVersion === 1, "handshake did not negotiate protocol v1");
-  assert(handshake.result?.plugin?.id === "dbx.xxljob", "unexpected plugin identity");
+  assert(handshake.result?.plugin?.id === "alancere.xxljob", "unexpected plugin identity");
 
   const test = await client.call("connection/test", lifecycle);
   assert(test.result?.success === true, `connection/test failed: ${JSON.stringify(test)}`);
