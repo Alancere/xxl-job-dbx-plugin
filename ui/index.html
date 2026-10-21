@@ -44,6 +44,10 @@
       }
       button { font: inherit; color: inherit; }
       h2, h3 { margin: 0; }
+      /* `hidden` must always win: .app/.blank/.toast etc. set display
+         themselves, which would otherwise override the UA's [hidden] rule and
+         keep "removed" panels visible. */
+      [hidden] { display: none !important; }
       .app { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
       /* --- top bar --- */
