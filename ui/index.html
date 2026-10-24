@@ -316,6 +316,61 @@
       .field textarea { height: auto; min-height: 60px; padding: 6px 9px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
       .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--color-ring, #93c5fd); outline-offset: 1px; }
       .field .tip { font-size: 11.5px; color: var(--xj-muted-fg); }
+
+      /* --- cron quick builder --- */
+      .cron-field { display: flex; align-items: center; gap: 6px; }
+      .cron-field input { flex: 1; min-width: 0; }
+      .cron-field .btn { flex: none; }
+      .cron-backdrop { position: fixed; inset: 0; z-index: 55; }
+      .cron-pop {
+        position: fixed;
+        z-index: 56;
+        width: 400px;
+        max-width: calc(100vw - 20px);
+        display: flex;
+        flex-direction: column;
+        border-radius: 10px;
+        border: 1px solid var(--xj-border);
+        background: var(--xj-card);
+        box-shadow: 0 20px 56px rgba(0, 0, 0, 0.34);
+        font-size: 12px;
+        color: var(--xj-fg);
+      }
+      .cron-tabs { display: flex; border-bottom: 1px solid var(--xj-border); }
+      .cron-tab {
+        flex: 1;
+        height: 31px;
+        border: 0;
+        background: transparent;
+        color: var(--xj-muted-fg);
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+      }
+      .cron-tab:hover { color: var(--xj-fg); }
+      .cron-tab.active { color: var(--xj-primary); font-weight: 650; box-shadow: inset 0 -2px 0 var(--xj-primary); }
+      .cron-body { padding: 8px 12px 10px; max-height: 288px; overflow: auto; }
+      .cron-opt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 24px; cursor: pointer; }
+      .cron-opt input[type="radio"] { margin: 0; }
+      .cron-opt code { color: var(--xj-muted-fg); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .cron-num {
+        width: 52px;
+        height: 24px;
+        padding: 0 6px;
+        border-radius: 6px;
+        border: 1px solid var(--color-input, var(--xj-border));
+        background: var(--xj-bg);
+        color: var(--xj-fg);
+        font: inherit;
+        font-size: 12px;
+      }
+      .cron-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 1px 0; margin: 4px 0 0 20px; }
+      .cron-grid label { display: flex; align-items: center; gap: 1px; color: var(--xj-muted-fg); font-size: 11px; cursor: pointer; }
+      .cron-grid input { width: 12px; height: 12px; margin: 0; }
+      .cron-preview { padding: 7px 12px; border-top: 1px solid var(--xj-border); color: var(--xj-muted-fg); }
+      .cron-preview b { display: block; margin-bottom: 2px; color: var(--xj-fg); font-weight: 600; }
+      .cron-preview div { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.55; }
+      .cron-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--xj-border); }
       .row-actions { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--xj-muted-fg); }
       .row-actions select {
         height: 26px;
@@ -790,6 +845,272 @@
         });
       }
 
+      // --- cron quick builder ---------------------------------------------
+      // The admin console owns the Quartz parser, so the builder only composes
+      // an expression and asks /jobinfo/nextTriggerTime for the next fire times.
+      const CRON_UNITS = [
+        { key: "second", label: "秒", index: 0, min: 0, max: 59 },
+        { key: "minute", label: "分钟", index: 1, min: 0, max: 59 },
+        { key: "hour", label: "小时", index: 2, min: 0, max: 23 },
+        { key: "day", label: "日", index: 3, min: 1, max: 31, allowNone: true },
+        { key: "month", label: "月", index: 4, min: 1, max: 12 },
+        { key: "week", label: "周", index: 5, min: 1, max: 7, allowNone: true, columns: 4, names: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] },
+        { key: "year", label: "年", index: 6, min: 1970, max: 2099, grid: false },
+      ];
+
+      function cronSplit(value) {
+        const fields = String(value || "").trim().split(/\s+/).filter(Boolean);
+        const parts = ["0", "0", "0", "*", "*", "?"].map((fallback, index) => fields[index] || fallback);
+        parts.push(fields[6] || "");
+        return parts;
+      }
+
+      function cronJoin(parts) {
+        const base = parts.slice(0, 6).join(" ");
+        return parts[6] ? `${base} ${parts[6]}` : base;
+      }
+
+      function parseCronField(field) {
+        const text = String(field || "").trim();
+        if (text === "?") return { mode: "none" };
+        if (text === "*") return { mode: "every" };
+        const range = text.match(/^(\d+)-(\d+)$/);
+        if (range) return { mode: "range", rangeFrom: num(range[1]), rangeTo: num(range[2]) };
+        const interval = text.match(/^(\d+|\*)\/(\d+)$/);
+        if (interval) {
+          return {
+            mode: "interval",
+            intervalFrom: interval[1] === "*" ? 0 : num(interval[1]),
+            intervalStep: Math.max(1, num(interval[2], 1)),
+          };
+        }
+        if (text.includes(",")) {
+          const values = text
+            .split(",")
+            .map((part) => parseInt(part.trim(), 10))
+            .filter((part) => Number.isFinite(part));
+          return { mode: "specify", values };
+        }
+        if (/^\d+$/.test(text)) return { mode: "specify", values: [num(text)] };
+        return { mode: "every" };
+      }
+
+      function openCronBuilder(options) {
+        if (document.querySelector(".cron-pop")) return;
+        const parts = cronSplit(options.value);
+        let active = 0;
+        let editor = editorFor(0);
+        let previewTimer = 0;
+        let previewToken = 0;
+
+        const backdrop = document.createElement("div");
+        backdrop.className = "cron-backdrop";
+        const pop = document.createElement("div");
+        pop.className = "cron-pop";
+        pop.innerHTML = `
+          <div class="cron-tabs">${CRON_UNITS.map((unit, index) => `<button class="cron-tab${index === 0 ? " active" : ""}" data-cron-tab="${index}" type="button">${unit.label}</button>`).join("")}</div>
+          <div class="cron-body"></div>
+          <div class="cron-preview"><b>最近运行时间</b><div data-cron-times>计算中…</div></div>
+          <div class="cron-foot">
+            <button class="btn small" data-cron-cancel type="button">取消</button>
+            <button class="btn small primary" data-cron-apply type="button">确定</button>
+          </div>`;
+        document.body.append(backdrop, pop);
+
+        const body = pop.querySelector(".cron-body");
+        const times = pop.querySelector("[data-cron-times]");
+
+        function editorFor(index) {
+          const unit = CRON_UNITS[index];
+          const parsed = parseCronField(parts[unit.index]);
+          const values = parsed.values || [];
+          return {
+            unit,
+            mode: parsed.mode,
+            rangeFrom: parsed.rangeFrom ?? unit.min,
+            rangeTo: parsed.rangeTo ?? Math.min(unit.max, unit.min + 1),
+            intervalFrom: parsed.intervalFrom ?? unit.min,
+            intervalStep: parsed.intervalStep ?? 1,
+            values: new Set(values),
+            years: values.join(","),
+          };
+        }
+
+        function fieldValue() {
+          const unit = editor.unit;
+          if (editor.mode === "none") return "?";
+          if (editor.mode === "every") return "*";
+          if (editor.mode === "range") return `${editor.rangeFrom}-${editor.rangeTo}`;
+          if (editor.mode === "interval") return `${editor.intervalFrom}/${editor.intervalStep}`;
+          const picked = [...editor.values].sort((left, right) => left - right);
+          return picked.length ? picked.join(",") : "*";
+        }
+
+        function expression() {
+          const unit = editor.unit;
+          const value = fieldValue();
+          parts[unit.index] = value;
+          // Only a concrete day/week value clears its counterpart. Leaving the
+          // field as "?" must not wipe a weekly (or daily) expression the user
+          // configured on the other tab.
+          if (unit.key === "day" && value !== "?") parts[5] = "?";
+          if (unit.key === "week" && value !== "?") parts[3] = "?";
+          if (unit.key === "year") parts[6] = value === "*" ? "" : value;
+          return cronJoin(parts);
+        }
+
+        function valueGrid() {
+          const unit = editor.unit;
+          const cells = [];
+          for (let value = unit.min; value <= unit.max; value += 1) {
+            const label = unit.names ? unit.names[value - unit.min] : String(value).padStart(2, "0");
+            cells.push(`<label><input type="checkbox" data-cron-value="${value}"${editor.values.has(value) ? " checked" : ""} />${label}</label>`);
+          }
+          const columns = unit.columns || 10;
+          return `<div class="cron-grid" style="grid-template-columns:repeat(${columns},minmax(0,1fr))">${cells.join("")}</div>`;
+        }
+
+        function yearInput() {
+          return `<div style="margin:4px 0 0 20px"><input class="cron-num" data-cron-years style="width:100%" value="${esc(editor.years)}" placeholder="2026,2027" /></div>`;
+        }
+
+        function render() {
+          const unit = editor.unit;
+          const radio = (mode, text) =>
+            `<label class="cron-opt"><input type="radio" name="cron-mode" value="${mode}"${editor.mode === mode ? " checked" : ""} />${text}</label>`;
+          const input = (key, value, min, max) =>
+            `<input class="cron-num" data-cron-input="${key}" type="number" min="${min}" max="${max}" value="${value}" />`;
+          let html = radio("every", `每${unit.label} <code>*</code>`);
+          html += radio(
+            "range",
+            `周期 从 ${input("rangeFrom", editor.rangeFrom, unit.min, unit.max)} - ${input("rangeTo", editor.rangeTo, unit.min, unit.max)} ${unit.label}`,
+          );
+          html += radio(
+            "interval",
+            `从 ${input("intervalFrom", editor.intervalFrom, unit.min, unit.max)} ${unit.label}开始，每 ${input("intervalStep", editor.intervalStep, 1, unit.max)} ${unit.label}执行一次`,
+          );
+          html += radio("specify", "指定");
+          if (unit.allowNone) html += radio("none", "不指定 <code>?</code>");
+          if (editor.mode === "specify") html += unit.grid === false ? yearInput() : valueGrid();
+          body.innerHTML = html;
+
+          body.querySelectorAll('input[name="cron-mode"]').forEach((node) => {
+            node.addEventListener("change", () => {
+              editor.mode = node.value;
+              render();
+              queuePreview();
+            });
+          });
+          body.querySelectorAll("[data-cron-input]").forEach((node) => {
+            node.addEventListener("input", () => {
+              const key = node.dataset.cronInput;
+              const parsed = parseInt(node.value, 10);
+              const floor = key === "intervalStep" ? 1 : unit.min;
+              editor[key] = Number.isFinite(parsed) ? Math.min(Math.max(parsed, floor), unit.max) : floor;
+              queuePreview();
+            });
+          });
+          body.querySelectorAll("[data-cron-value]").forEach((node) => {
+            node.addEventListener("change", () => {
+              const value = num(node.dataset.cronValue);
+              if (node.checked) editor.values.add(value);
+              else editor.values.delete(value);
+              queuePreview();
+            });
+          });
+          const years = body.querySelector("[data-cron-years]");
+          if (years) {
+            years.addEventListener("input", () => {
+              editor.years = years.value;
+              editor.values = new Set(
+                years.value
+                  .split(",")
+                  .map((part) => parseInt(part.trim(), 10))
+                  .filter((part) => Number.isFinite(part)),
+              );
+              queuePreview();
+            });
+          }
+          place();
+        }
+
+        function place() {
+          const rect = options.anchor.getBoundingClientRect();
+          const width = pop.offsetWidth || 400;
+          const height = pop.offsetHeight || 420;
+          const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+          let top = rect.bottom + 6;
+          if (top + height > window.innerHeight - 8) top = Math.max(8, rect.top - height - 6);
+          pop.style.left = `${left}px`;
+          pop.style.top = `${top}px`;
+        }
+
+        async function runPreview() {
+          const token = ++previewToken;
+          const value = expression();
+          times.textContent = "计算中…";
+          try {
+            const result = await api("xxljob/job/nextTriggerTime", { scheduleType: "CRON", scheduleConf: value });
+            if (token !== previewToken) return;
+            if (result.supported === false) {
+              times.textContent = result.message || "当前管理端不支持预览";
+              return;
+            }
+            const list = Array.isArray(result.times) ? result.times.slice(0, 5) : [];
+            times.innerHTML = list.length
+              ? list.map((entry) => `<div>${esc(String(entry))}</div>`).join("")
+              : "当前配置不会产生调度";
+          } catch (error) {
+            if (token === previewToken) times.textContent = error.message;
+          }
+        }
+
+        function queuePreview() {
+          window.clearTimeout(previewTimer);
+          previewTimer = window.setTimeout(runPreview, 320);
+        }
+
+        const reposition = () => place();
+        const close = () => {
+          window.clearTimeout(previewTimer);
+          previewToken += 1;
+          document.removeEventListener("keydown", onKey, true);
+          document.removeEventListener("scroll", reposition, true);
+          window.removeEventListener("resize", reposition);
+          backdrop.remove();
+          pop.remove();
+        };
+        function onKey(event) {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+        }
+        document.addEventListener("keydown", onKey, true);
+        document.addEventListener("scroll", reposition, true);
+        window.addEventListener("resize", reposition);
+        backdrop.addEventListener("click", close);
+        pop.querySelector("[data-cron-cancel]").addEventListener("click", close);
+        pop.querySelector("[data-cron-apply]").addEventListener("click", () => {
+          options.onApply(expression());
+          close();
+        });
+        pop.querySelectorAll("[data-cron-tab]").forEach((node) => {
+          node.addEventListener("click", () => {
+            if (num(node.dataset.cronTab) === active) return;
+            expression();
+            active = num(node.dataset.cronTab);
+            editor = editorFor(active);
+            pop.querySelectorAll(".cron-tab").forEach((tab) => tab.classList.toggle("active", num(tab.dataset.cronTab) === active));
+            render();
+            queuePreview();
+          });
+        });
+
+        render();
+        runPreview();
+      }
+
       // --- overview & groups --------------------------------------------
       async function loadOverview() {
         const overview = await api("xxljob/overview", { days: state.report.days }, 60000);
@@ -1009,7 +1330,12 @@
             <label class="field"><span>负责人</span><input id="je-author" value="${esc(values.author || "admin")}" /></label>
             <label class="field"><span>报警邮件</span><input id="je-alarmEmail" value="${esc(values.alarmEmail || "")}" placeholder="多个用逗号分隔" /></label>
             <label class="field"><span>调度类型</span><select id="je-scheduleType">${optionsHtml([["NONE", "不调度"], ["CRON", "CRON"], ["FIX_RATE", "固定频率"], ["FIX_DELAY", "固定延迟"]], values.scheduleType || "NONE")}</select></label>
-            <label class="field"><span>调度配置</span><input id="je-scheduleConf" value="${esc(values.scheduleConf || "")}" placeholder="0 0 0 * * ? 或 30（秒）" /></label>
+            <label class="field"><span>调度配置</span>
+              <div class="cron-field">
+                <input id="je-scheduleConf" value="${esc(values.scheduleConf || "")}" placeholder="0 0 0 * * ? 或 30（秒）" />
+                <button class="btn small" id="je-cron-open" type="button" title="用卡片快速生成 Cron 表达式">Cron</button>
+              </div>
+            </label>
             <div class="field full">
               <div class="row-actions">
                 <button class="btn small" id="je-preview" type="button">预览下次执行时间</button>
@@ -1037,27 +1363,37 @@
         });
         const scheduleType = el("je-scheduleType");
         const scheduleConf = el("je-scheduleConf");
-        const syncSchedule = () => {
-          const type = scheduleType.value;
-          scheduleConf.disabled = type === "NONE";
-          scheduleConf.placeholder = type === "FIX_RATE" || type === "FIX_DELAY" ? "执行间隔秒数，例如 30" : "0 0 0 * * ?";
-        };
-        scheduleType.addEventListener("change", syncSchedule);
-        syncSchedule();
-        el("je-preview").addEventListener("click", async () => {
-          const target = el("je-preview-result");
+        const cronButton = el("je-cron-open");
+        const previewResult = el("je-preview-result");
+        const previewSchedule = async (target, type, conf) => {
           target.textContent = "计算中…";
           try {
-            const preview = await api("xxljob/job/nextTriggerTime", {
-              scheduleType: scheduleType.value,
-              scheduleConf: scheduleConf.value,
-            });
+            const preview = await api("xxljob/job/nextTriggerTime", { scheduleType: type, scheduleConf: conf });
             if (preview.supported === false) target.textContent = preview.message || "当前管理端不支持预览";
             else if (!preview.times || !preview.times.length) target.textContent = "当前配置不会产生调度";
             else target.textContent = `下次：${preview.times.slice(0, 3).join("、")}`;
           } catch (error) {
             target.textContent = error.message;
           }
+        };
+        const syncSchedule = () => {
+          const type = scheduleType.value;
+          scheduleConf.disabled = type === "NONE";
+          scheduleConf.placeholder = type === "FIX_RATE" || type === "FIX_DELAY" ? "执行间隔秒数，例如 30" : "0 0 0 * * ?";
+          cronButton.disabled = type !== "CRON";
+        };
+        scheduleType.addEventListener("change", syncSchedule);
+        syncSchedule();
+        el("je-preview").addEventListener("click", () => previewSchedule(previewResult, scheduleType.value, scheduleConf.value));
+        cronButton.addEventListener("click", () => {
+          openCronBuilder({
+            anchor: scheduleConf,
+            value: scheduleConf.value,
+            onApply: (expression) => {
+              scheduleConf.value = expression;
+              previewSchedule(previewResult, "CRON", expression);
+            },
+          });
         });
         if (isEdit && String(values.glueType || "BEAN") !== "BEAN") {
           footer.appendChild(button("GLUE 源码", "ghost", () => openGlueEditor(values)));

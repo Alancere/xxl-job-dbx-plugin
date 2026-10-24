@@ -38,7 +38,7 @@ type plugin struct {
 
 // buildVersion is injected with -ldflags at package time; the fallback keeps a
 // plain `go run` usable during development.
-var buildVersion = "1.0.5"
+var buildVersion = "1.1.0"
 
 func main() {
 	version := buildVersion
