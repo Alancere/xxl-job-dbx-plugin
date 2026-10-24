@@ -147,12 +147,13 @@ func TestV3ConsoleEndToEnd(t *testing.T) {
 
 // TestV3PageQueryShape verifies the paging parameter names without a server.
 func TestV3PageQueryShape(t *testing.T) {
-	session := &Session{version: consoleV3}
+	session := &Session{}
+	session.version.Store(consoleV3)
 	query := session.pageQuery(5, 50)
 	if query.Get("offset") != "5" || query.Get("pagesize") != "50" || query.Get("start") != "" {
 		t.Fatalf("unexpected v3 page query: %v", query)
 	}
-	session.version = consoleV2
+	session.version.Store(consoleV2)
 	query = session.pageQuery(5, 50)
 	if query.Get("start") != "5" || query.Get("length") != "50" || query.Get("offset") != "" {
 		t.Fatalf("unexpected v2 page query: %v", query)

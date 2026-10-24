@@ -21,7 +21,10 @@ const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "ut
 const dist = process.env.DBX_PLUGIN_OUTPUT_DIR ? path.resolve(process.env.DBX_PLUGIN_OUTPUT_DIR) : path.join(root, "dist");
 const target = process.env.DBX_PLUGIN_TARGET || platformTarget();
 const executableName = target.startsWith("windows-") ? "dbx-xxljob.exe" : "dbx-xxljob";
-const output = path.join(dist, `${manifest.id}-${manifest.version}-${target}.dbxp`);
+// DBX_PLUGIN_VERSION lets a local test build use a version ahead of the
+// manifest without editing the manifest (and without touching release output).
+const version = process.env.DBX_PLUGIN_VERSION || manifest.version;
+const output = path.join(dist, `${manifest.id}-${version}-${target}.dbxp`);
 const artifactMetadata = output.replace(/\.dbxp$/, ".artifact.json");
 
 const CRC_TABLE = (() => {
@@ -43,11 +46,15 @@ async function main() {
   try {
     await mkdir(path.join(stage, "bin", target), { recursive: true });
     await mkdir(dist, { recursive: true });
-    buildSidecar(path.join(stage, "bin", target, executableName));
+    buildSidecar(path.join(stage, "bin", target, executableName), version);
     await cp(path.join(root, "assets"), path.join(stage, "assets"), { recursive: true });
     await cp(path.join(root, "ui"), path.join(stage, "ui"), { recursive: true });
+    // Ship the license with every package: the store review checks that the
+    // declared license actually travels with the artifact.
+    await cp(path.join(root, "LICENSE"), path.join(stage, "LICENSE"));
 
     const staged = structuredClone(manifest);
+    staged.version = version;
     staged.entrypoints = { ...staged.entrypoints, backend: { executable: `bin/${target}/${executableName}` } };
     await writeFile(path.join(stage, "manifest.json"), `${JSON.stringify(staged, null, 2)}\n`);
 
@@ -74,11 +81,11 @@ async function main() {
   }
 }
 
-function buildSidecar(destination) {
+function buildSidecar(destination, version) {
   const [goos, goarch] = goPlatform(target);
   const result = spawnSync(
     "go",
-    ["build", "-trimpath", "-ldflags", `-s -w -X main.buildVersion=${manifest.version}`, "-o", destination, "."],
+    ["build", "-trimpath", "-ldflags", `-s -w -X main.buildVersion=${version}`, "-o", destination, "."],
     {
       cwd: path.join(root, "backend"),
       stdio: "inherit",

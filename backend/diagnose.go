@@ -297,8 +297,9 @@ func shortError(err error) string {
 
 func truncate(value string, limit int) string {
 	value = strings.Join(strings.Fields(value), " ")
-	if len(value) <= limit {
+	runes := []rune(value)
+	if len(runes) <= limit {
 		return value
 	}
-	return value[:limit] + "…"
+	return string(runes[:limit]) + "…"
 }

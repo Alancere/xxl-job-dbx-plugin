@@ -4,7 +4,7 @@
   "id": "alancere.xxljob",
   "name": "XXL-JOB",
   "icon": "assets/plugin.svg",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "alancere",
   "description": "XXL-JOB distributed task scheduler console inside DBX: executor groups, job management, manual trigger, start/stop, scheduling logs, GLUE source, and trigger reports.",
   "source": "https://github.com/Alancere/xxl-job-dbx-plugin",

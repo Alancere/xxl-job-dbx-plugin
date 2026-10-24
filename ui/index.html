@@ -584,7 +584,7 @@
         groups: [],
         groupId: 0,
         jobs: { total: 0, page: 0, status: -1, keyword: "", field: "jobDesc" },
-        logs: { total: 0, page: 0, status: -1, jobId: 0, groupId: -1, filterTime: "" },
+        logs: { total: 0, page: 0, status: -1, jobId: 0, groupId: -1, filterTime: "", items: [] },
         report: { days: 7, data: null },
         sessionLost: false,
       };
@@ -660,6 +660,12 @@
         if (handleCode === 500) return { text: "执行失败", cls: "bad" };
         if (handleCode === 0 || log.handleCode === null || log.handleCode === undefined) return { text: "运行中", cls: "warn" };
         return { text: `结果 ${handleCode}`, cls: "neutral" };
+      }
+
+      // Only a trigger that reached an executor and has not reported back yet
+      // can be killed; a completed run has nothing left to stop.
+      function isRunningLog(log) {
+        return num(log.triggerCode) === 200 && num(log.handleCode) === 0;
       }
 
       let toastTimer = 0;
@@ -786,7 +792,7 @@
 
       // --- overview & groups --------------------------------------------
       async function loadOverview() {
-        const overview = await api("xxljob/overview", {}, 60000);
+        const overview = await api("xxljob/overview", { days: state.report.days }, 60000);
         state.endpoint = overview.baseUrl || "";
         state.groups = Array.isArray(overview.groups) ? overview.groups : [];
         state.report.data = overview;
@@ -905,12 +911,14 @@
         return api("xxljob/job", { id }, 60000);
       }
 
-      async function jobRowAction(id, action, row) {
+      // `control` is the button that was clicked, not the table row: the toggle
+      // keeps its current state in data-running on the button itself.
+      async function jobRowAction(id, action, control) {
         if (action === "edit") return openJobEditor(id);
         if (action === "logs") return openJobLogs(id);
         if (action === "trigger") return openTriggerDialog(id);
         if (action === "toggle") {
-          const running = row.dataset.running === "1";
+          const running = control.dataset.running === "1";
           const method = running ? "xxljob/job/stop" : "xxljob/job/start";
           try {
             const result = await api(method, { id });
@@ -1184,7 +1192,8 @@
           length: PAGE_SIZE,
         });
         state.logs.total = num(result.total);
-        renderLogs(Array.isArray(result.logs) ? result.logs : []);
+        state.logs.items = Array.isArray(result.logs) ? result.logs : [];
+        renderLogs(state.logs.items);
       }
 
       function renderLogs(logs) {
@@ -1204,7 +1213,7 @@
               <td class="right">
                 <div class="actions">
                   <button class="link" data-act="detail" ${hasExecutor ? "" : `disabled title="该次调度未路由到执行器，管理端读不到执行日志"`}>日志</button>
-                  <button class="link danger" data-act="kill" ${num(log.triggerCode) === 200 ? "" : `disabled title="只有触发成功的调度才能终止"`}>终止</button>
+                  <button class="link danger" data-act="kill" ${isRunningLog(log) ? "" : `disabled title="只有运行中的调度才能终止"`}>终止</button>
                 </div>
               </td>
             </tr>`;
@@ -1252,7 +1261,7 @@
           append(true).catch((error) => toast(error.message, "error"));
         }));
         footer.appendChild(more);
-        footer.appendChild(button("终止执行", "danger", async () => {
+        const kill = button("终止执行", "danger", async () => {
           const confirmed = await confirmDialog({ title: "终止执行", message: "向执行器发送终止指令，正在运行的任务会被中断。", confirmLabel: "终止", danger: true });
           if (!confirmed) return;
           try {
@@ -1262,7 +1271,12 @@
           } catch (error) {
             toast(error.message, "error");
           }
-        }));
+        });
+        if (!isRunningLog(log)) {
+          kill.disabled = true;
+          kill.title = "只有运行中的调度才能终止";
+        }
+        footer.appendChild(kill);
         footer.appendChild(button("关闭", "ghost", modal.close));
         try {
           await append(true);
@@ -1457,10 +1471,14 @@
         const label = el("refresh-label");
         label.innerHTML = '<span class="spin"></span>';
         try {
+          // The overview call already carries the stats, groups and trigger
+          // trend for the selected window, so the report tab must not fetch the
+          // same dashboard a second time on refresh.
           await loadOverview();
-          await loadJobs();
-          if (state.tab === "logs") await loadLogs();
-          if (state.tab === "report") await loadReport();
+          await Promise.all([
+            loadJobs(),
+            state.tab === "logs" ? loadLogs() : Promise.resolve(),
+          ]);
         } catch (error) {
           toast(error.message, "error");
         } finally {
@@ -1527,7 +1545,8 @@
           const trigger = event.target.closest("[data-act]");
           const row = event.target.closest("tr[data-id]");
           if (!trigger || !row) return;
-          jobRowAction(num(row.dataset.id), trigger.dataset.act, row);
+          // Pass the button (it carries data-running), not the row.
+          jobRowAction(num(row.dataset.id), trigger.dataset.act, trigger);
         });
 
         el("btn-log-search").addEventListener("click", () => {
@@ -1565,10 +1584,11 @@
           if (!trigger || !row) return;
           const id = num(row.dataset.id);
           if (trigger.dataset.act === "detail") {
-            const log = { id, jobDesc: "", executorAddress: "", triggerTime: row.dataset.triggerTime || "" };
-            const cells = row.querySelectorAll("td");
-            log.jobDesc = cells[1] ? cells[1].textContent.trim() : "";
-            log.executorAddress = cells[2] ? cells[2].textContent.trim() : "";
+            // Read the row payload instead of the rendered cells: the second
+            // cell also contains the job id and handler, which would otherwise
+            // leak into the dialog subtitle.
+            const log = state.logs.items.find((entry) => num(entry.id) === id) ||
+              { id, triggerTime: row.dataset.triggerTime || "" };
             openLogDetail(log);
           } else if (trigger.dataset.act === "kill") {
             confirmDialog({ title: "终止执行", message: `向调度日志 #${id} 对应的执行器发送终止指令。`, confirmLabel: "终止", danger: true }).then(

@@ -900,6 +900,26 @@ func TestLogDetailExplainsUnroutableTrigger(t *testing.T) {
 	}
 }
 
+// TestLogDetailExplainsUnreachableExecutor covers the console's forwarded
+// remoting error: the scheduling record is intact, but the executor that hosts
+// the execution log has gone away.
+func TestLogDetailExplainsUnreachableExecutor(t *testing.T) {
+	admin, server := newMockAdmin(t, "/xxl-job-admin")
+	admin.logDetailRaw = `{"code":500,"msg":"Http Request Error (Connection refused), for url : http://10.18.58.5:9999/log","content":null}`
+	session, _ := newSession(server.URL+"/xxl-job-admin", "admin", "123456", 5*time.Second, false)
+
+	_, err := session.LogDetail(context.Background(), 11, 1)
+	if err == nil {
+		t.Fatal("expected an error for an unreachable executor")
+	}
+	if !strings.Contains(err.Message, "10.18.58.5:9999") || !strings.Contains(err.Message, "执行器") {
+		t.Fatalf("unexpected message: %v", err.Message)
+	}
+	if !strings.Contains(err.Detail, "Connection refused") {
+		t.Fatalf("raw detail should be preserved: %q", err.Detail)
+	}
+}
+
 func TestGlueSourceRoundTrip(t *testing.T) {
 	admin, server := newMockAdmin(t, "/xxl-job-admin")
 	session, _ := newSession(server.URL+"/xxl-job-admin", "admin", "123456", 5*time.Second, false)

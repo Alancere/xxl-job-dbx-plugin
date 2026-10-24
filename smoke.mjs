@@ -38,6 +38,7 @@ assert(names.includes("manifest.json"), "manifest.json is missing");
 assert(names.includes("checksums.json"), "checksums.json is missing");
 assert(names.includes(`bin/${target}/${executableName}`), "sidecar binary is missing");
 assert(names.includes("ui/index.html"), "workbench UI is missing");
+assert(names.includes("LICENSE"), "LICENSE is missing from the package");
 assert(!names.some((name) => name.endsWith("/")), "package must not contain directory entries");
 assert(new Set(names).size === names.length, "package contains duplicate entries");
 

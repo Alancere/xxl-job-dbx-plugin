@@ -46,12 +46,17 @@ node plugins/xxl-job/package.mjs
 # 3) 交叉打包（多平台发布）
 DBX_PLUGIN_TARGET=linux-x64 node plugins/xxl-job/package.mjs
 DBX_PLUGIN_TARGET=windows-x64 node plugins/xxl-job/package.mjs
+
+# 4) 本地覆盖安装测试：用高于商店的版本号，产物输出到独立目录
+DBX_PLUGIN_VERSION=1.0.5 DBX_PLUGIN_OUTPUT_DIR=/tmp/xxljob-local node plugins/xxl-job/package.mjs
 ```
 
 `package.mjs` 用 `go build` 交叉编译 Sidecar，并按 DBX 的包规则写出 ZIP 容器（Deflate、UTF-8 文件名、Unix 权限、无目录条目、`checksums.json` 覆盖全部文件）。产物是一个**未签名**的候选包，安装时需要：
 
-- 打开 **插件中心 → 允许安装未签名开发包**，安装 `dist/alancere.xxljob-1.0.4-<target>.dbxp`；或
+- 打开 **插件中心 → 允许安装未签名开发包**，安装 `dist/alancere.xxljob-<version>-<target>.dbxp`；或
 - 用 `dbx-plugin-packager sign` 由仓库密钥签名后再安装（正式发布流程见 `plugins/RELEASING.md`）。
+
+本地覆盖测试要注意版本号：已安装商店版时，用 `DBX_PLUGIN_VERSION` 指定一个更高的版本（例如 `1.0.5`），否则同版本可能被宿主拒绝安装。
 
 一次完整的本地校验（测试 → 打包 → 校验每个文件的 SHA-256 与可执行位 → 启动真实 Sidecar 连接模拟管理端）：
 
@@ -154,7 +159,7 @@ Sidecar 进程重启或连接被关闭后会出现，点提示里的 **重新连
 - **执行日志正文**：2.4.1 起 `/joblog/logDetailCat` 由管理端转发给执行器读取，调度未路由到执行器时（触发失败、执行器地址为空）没有正文可读；工作台会禁用该行的「日志」按钮并说明原因。
 - **启动任务**：调度类型为「不调度（NONE）」的任务无法启动，管理端返回“当前调度类型禁止启动”；工作台对这类任务禁用「启动」，需先改为固定频率或 Cron。
 - **GLUE 源码读取**：控制台没有 JSON 接口，插件从 `/jobcode` 页面提取 `glueSource` 文本域；页面结构变化时会提示改用管理端网页编辑（保存接口不受影响）。
-- **认证方式**：只支持管理端自带的表单登录。XXL-JOB 的 `xxl.job.accessToken` 是执行器与调度中心之间的凭据，与控制台登录无关。
+- **认证方式**：按优先级支持三种——① 浏览器会话 Cookie 或自定义认证头（原样复用，适合自建/SSO 登录）；② XXL-SSO access token（先 `POST /api/login` 换取会话，并把 `XXL-JOB-ACCESS-TOKEN` 带在每个请求上）；③ 管理端自带的表单登录（2.x `/login`，3.x 回退 `/auth/doLogin`）。注意 `xxl.job.accessToken` 本身是执行器与调度中心之间的共享凭据，只有在管理端把它当作 OpenAPI/SSO 守卫时才需要填到连接配置里。
 - **管理员账号**：登录用户需要在管理端拥有对应权限；无权限的操作会原样返回管理端的错误信息。
 - **执行器分组维护**：工作台只读展示分组与注册地址，新增/修改分组请仍在管理端完成。
 
@@ -163,7 +168,7 @@ Sidecar 进程重启或连接被关闭后会出现，点提示里的 **重新连
 Sidecar 在 `connection/test`、`connection/connect`、`connection/disconnect` 之外，向工作台暴露以下方法（均需 `connectionId`）：
 
 ```text
-xxljob/overview             { }                                 连接概览 + 分组 + 统计
+xxljob/overview             { days }                            连接概览 + 分组 + 统计 + 趋势
 xxljob/dashboard            { days }                            统计 + 调度趋势 + 分组
 xxljob/groups               { }                                 执行器分组
 xxljob/jobs                 { groupId, status, searchField,    任务分页（status: -1 全部 /

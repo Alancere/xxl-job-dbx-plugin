@@ -38,7 +38,7 @@ type plugin struct {
 
 // buildVersion is injected with -ldflags at package time; the fallback keeps a
 // plain `go run` usable during development.
-var buildVersion = "1.0.4"
+var buildVersion = "1.0.5"
 
 func main() {
 	version := buildVersion
@@ -116,7 +116,9 @@ func (p *plugin) dispatch(method string, params map[string]any, notify func(stri
 
 	switch method {
 	case "xxljob/overview":
-		return session.Dashboard(ctx, 7)
+		// The workbench reuses this call for its dashboard, so honour the day
+		// window instead of resetting the report to seven days on every refresh.
+		return session.Dashboard(ctx, paramInt(params, "days"))
 	case "xxljob/dashboard":
 		return session.Dashboard(ctx, paramInt(params, "days"))
 	case "xxljob/groups":

@@ -192,7 +192,7 @@ func (session *Session) SaveJob(ctx context.Context, job map[string]any) (map[st
 		return nil, err
 	}
 	path := "/jobinfo/add"
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		path = "/jobinfo/insert"
 	}
 	message := "任务已创建"
@@ -227,7 +227,7 @@ func (session *Session) jobAction(ctx context.Context, path string, id int, succ
 		return nil, newSessionError(errInvalidParams, "缺少任务 ID")
 	}
 	form := url.Values{}
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		// 3.x binds the id list as `ids[]`; the classic console takes a single `id`.
 		form.Add("ids[]", strconv.Itoa(id))
 	} else {
@@ -249,7 +249,7 @@ func (session *Session) StopJob(ctx context.Context, id int) (map[string]any, *S
 
 func (session *Session) RemoveJob(ctx context.Context, id int) (map[string]any, *SessionError) {
 	path := "/jobinfo/remove"
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		path = "/jobinfo/delete"
 	}
 	return session.jobAction(ctx, path, id, "任务已删除")
@@ -376,7 +376,7 @@ func (session *Session) LogDetail(ctx context.Context, logID, fromLine int) (map
 	}
 	var raw []byte
 	var sessionErr *SessionError
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		// 3.x reads the rolling log over POST; 2.x answers a GET.
 		form := url.Values{}
 		form.Set("logId", strconv.Itoa(logID))
@@ -409,6 +409,12 @@ func (session *Session) LogDetail(ctx context.Context, logID, fromLine int) (map
 	if ret.Code != 200 {
 		var message string
 		_ = json.Unmarshal(ret.Msg, &message)
+		// The console reads execution logs from the executor itself, so a
+		// remoting failure means that executor is unreachable, not that the
+		// scheduling record is broken. Say so instead of echoing Java.
+		if hint := executorUnreachableHint(message); hint != "" {
+			return nil, &SessionError{Code: errUpstream, Message: hint, Detail: message}
+		}
 		// A failed trigger (no executor) leaves the console with nothing to
 		// read: 2.4.1 answers `{"code":500,"msg":null}`, 3.x answers a
 		// connection error to the executor.
@@ -416,7 +422,7 @@ func (session *Session) LogDetail(ctx context.Context, logID, fromLine int) (map
 			"管理端无法读取这条执行日志：该次调度没有路由到执行器（执行器地址为空或执行器不可达）"))
 	}
 	body := ret.Content
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		body = ret.Data
 	}
 	return map[string]any{
@@ -425,6 +431,33 @@ func (session *Session) LogDetail(ctx context.Context, logID, fromLine int) (map
 		"logContent":  body.LogContent,
 		"end":         body.End,
 	}, nil
+}
+
+// executorLogURLPattern captures the executor address from the console's
+// remoting error, e.g. "for url : http://10.18.58.5:9999/log".
+var executorLogURLPattern = regexp.MustCompile(`https?://([^\s/]+)/log\b`)
+
+// executorUnreachableHint rewrites the console's raw remoting error into a
+// sentence the workbench can act on. The scheduling record itself is intact;
+// only the executor-hosted log cannot be fetched.
+func executorUnreachableHint(message string) string {
+	lower := strings.ToLower(message)
+	unreachable := false
+	for _, marker := range []string{"connection refused", "connect timed out", "no route to host", "connection reset", "unknownhost"} {
+		if strings.Contains(lower, marker) {
+			unreachable = true
+			break
+		}
+	}
+	if !unreachable {
+		return ""
+	}
+	target := "执行器"
+	if match := executorLogURLPattern.FindStringSubmatch(message); len(match) == 2 {
+		target = "执行器 " + match[1]
+	}
+	return "管理端无法从" + target + "读取执行日志：连接被拒绝或超时。执行日志由调度中心主动访问执行器的 /log 接口获取，" +
+		"常见原因是执行器已下线、端口未监听、注册地址不可达（容器内网 IP 很常见）或防火墙拦截；本次调度记录本身不受影响。"
 }
 
 // KillLog terminates a running execution through the console's kill endpoint.
@@ -456,7 +489,7 @@ func (session *Session) GlueSource(ctx context.Context, jobID int) (map[string]a
 		return nil, newSessionError(errInvalidParams, "缺少任务 ID")
 	}
 	param := "id"
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		param = "jobId"
 	}
 	raw, sessionErr := session.callWith(ctx, "GET", "/jobcode?"+param+"="+strconv.Itoa(jobID), nil, true)
@@ -469,7 +502,7 @@ func (session *Session) GlueSource(ctx context.Context, jobID int) (map[string]a
 		return map[string]any{"supported": false, "source": "", "message": sessionErr.Message}, nil
 	}
 	pattern := glueSourcePattern
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		pattern = glueSourcePatternV3
 	}
 	match := pattern.FindSubmatch(raw)
@@ -507,7 +540,7 @@ func (session *Session) SaveGlueSource(ctx context.Context, jobID int, glueType,
 func (session *Session) ChartInfo(ctx context.Context, startDate, endDate string) (map[string]any, *SessionError) {
 	var raw []byte
 	var sessionErr *SessionError
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		// 3.x answers the chart over POST and expects a full datetime range.
 		form := url.Values{}
 		form.Set("startDate", startDate+" 00:00:00")
@@ -535,7 +568,7 @@ func (session *Session) ChartInfo(ctx context.Context, startDate, endDate string
 	if content == nil {
 		content = map[string]any{}
 	}
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		normalizeChartKeys(content)
 	}
 	return content, nil

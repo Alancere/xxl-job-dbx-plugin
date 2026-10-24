@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -109,7 +110,9 @@ type Session struct {
 
 	// version selects the admin API generation (2.x vs 3.x); it is fixed by the
 	// login route that succeeded and never changes for the life of the session.
-	version int
+	// It is written under mu during login but read on every request, so it is
+	// stored atomically instead of relying on the login lock.
+	version atomic.Int32
 	// identityCookie is the cookie that holds the login state; it is cleared on
 	// re-login and has a different name per console generation.
 	identityCookie string
@@ -128,7 +131,7 @@ func newSession(baseURL, username, password string, timeout time.Duration, insec
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: insecureTLS} //nolint:gosec // opt-in for self-signed admin consoles
-	return &Session{
+	session := &Session{
 		baseURL:          baseURL,
 		requestedBaseURL: baseURL,
 		username:         username,
@@ -136,7 +139,6 @@ func newSession(baseURL, username, password string, timeout time.Duration, insec
 		timeout:          timeout,
 		jar:              jar,
 		insecureTLS:      insecureTLS,
-		version:          consoleV2,
 		identityCookie:   loginCookieName,
 		client: &http.Client{
 			Jar:       jar,
@@ -146,8 +148,14 @@ func newSession(baseURL, username, password string, timeout time.Duration, insec
 			// so redirects are inspected instead of silently followed.
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
-	}, nil
+	}
+	session.version.Store(consoleV2)
+	return session, nil
 }
+
+// consoleVersion reports the admin API generation the current login route
+// selected. It is safe to call from concurrent requests.
+func (session *Session) consoleVersion() int { return int(session.version.Load()) }
 
 // BaseURL is the resolved admin console root, e.g. http://host:8080/xxl-job-admin.
 func (session *Session) BaseURL() string { return session.baseURL }
@@ -376,7 +384,7 @@ func (session *Session) formLoginLocked(ctx context.Context) *SessionError {
 		case http.StatusOK, http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
 			http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
 			// The console answers 200 with a body or a redirect to "/".
-			session.version = route.version
+			session.version.Store(int32(route.version))
 			session.identityCookie = route.cookie
 			return session.verifyLoggedIn(ctx)
 		default:
@@ -625,7 +633,7 @@ type Page struct {
 // 2.x uses start/length, 3.x uses offset/pagesize.
 func (session *Session) pageQuery(start, length int) url.Values {
 	query := url.Values{}
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		query.Set("offset", strconv.Itoa(start))
 		query.Set("pagesize", strconv.Itoa(length))
 	} else {
@@ -638,7 +646,7 @@ func (session *Session) pageQuery(start, length int) url.Values {
 // jobPageProbePath is the cheapest authenticated read for the session's
 // console generation.
 func (session *Session) jobPageProbePath() string {
-	if session.version != consoleV3 {
+	if session.consoleVersion() != consoleV3 {
 		return jobPageProbeClassic
 	}
 	query := session.pageQuery(0, 1)
@@ -655,7 +663,7 @@ func (session *Session) getPage(ctx context.Context, path string, query url.Valu
 	if sessionErr != nil {
 		return nil, sessionErr
 	}
-	if session.version == consoleV3 {
+	if session.consoleVersion() == consoleV3 {
 		var envelope struct {
 			Code int `json:"code"`
 			Data struct {
@@ -759,17 +767,10 @@ func messageOrDefault(message, fallback string) string {
 }
 
 // snippet keeps a short, single-line excerpt of an unexpected response for the
-// error message instead of dumping a whole HTML page into the UI.
+// error message instead of dumping a whole HTML page into the UI. Truncation is
+// rune-based so a multi-byte Chinese character is never cut in half.
 func snippet(body []byte) string {
-	text := strings.TrimSpace(string(body))
-	text = strings.Join(strings.Fields(text), " ")
-	if text == "" {
-		return ""
-	}
-	if len(text) > 300 {
-		text = text[:300] + "…"
-	}
-	return text
+	return truncate(string(body), 300)
 }
 
 func cleanMessage(err error) string {
